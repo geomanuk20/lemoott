@@ -1,0 +1,272 @@
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Search, Bookmark, User, Menu, X, LayoutDashboard, UserCircle, List, LogOut, ChevronDown } from 'lucide-react';
+import { formatBrandingUrl } from '../utils/branding';
+
+const FrontendNavbar = ({
+  isTransparent = true,
+  isMenuOpen,
+  setIsMenuOpen,
+  isSearchOpen,
+  setIsSearchOpen,
+  searchQuery,
+  setSearchQuery,
+  movies = [],
+  hideNavElements = false,
+  settings = null
+}) => {
+  const location = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+
+    const handleStorageChange = () => {
+      setIsLoggedIn(!!localStorage.getItem('token'));
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('profileUpdate', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('profileUpdate', handleStorageChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/';
+  };
+
+  const formatImageUrl = (item) => {
+    if (!item) return null;
+    const url = item.poster || item.thumbnail || item.image || '';
+    if (!url || typeof url !== 'string' || url.trim() === '') return null;
+    if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
+    const cleanPath = url.startsWith('/') ? url.substring(1) : url;
+    return `http://localhost:5001/${cleanPath}`;
+  };
+
+  return (
+    <>
+      <nav className={`fe-navbar-v ${isTransparent && !scrolled ? 'transparent' : 'scrolled'} ${isSearchOpen ? 'hidden' : ''}`}>
+        <div className="fe-nav-left">
+          <Link to="/" className={`fe-logo-v ${isMenuOpen ? 'hidden' : ''}`}>
+            {formatBrandingUrl(settings?.siteLogo) ? (
+              <img src={formatBrandingUrl(settings.siteLogo)} alt={settings.siteName || "LEMO OTT"} />
+            ) : (
+              <img src="" />
+            )}
+          </Link>
+        </div>
+        {!hideNavElements && (
+          <div className="fe-nav-center-v desktop-only">
+            <Link to="/" className={location.pathname === '/' ? 'active' : ''}>HOME</Link>
+            <Link to="/movies" className={location.pathname === '/movies' ? 'active' : ''}>MOVIES</Link>
+            <Link to="/shows" className={location.pathname === '/shows' ? 'active' : ''}>TV SHOWS</Link>
+            <Link to="/sports" className={location.pathname === '/sports' ? 'active' : ''}>SPORTS</Link>
+            <Link to="/live-tv" className={location.pathname === '/live-tv' ? 'active' : ''}>LIVE TV</Link>
+          </div>
+        )}
+        <div className="fe-nav-right">
+          {!hideNavElements && (
+            <>
+              <Search size={20} className="fe-nav-icon desktop-only" onClick={() => setIsSearchOpen(true)} />
+              <Link to={isLoggedIn ? "/watchlist" : "/login"}>
+                <Bookmark size={20} className="fe-nav-icon desktop-only" />
+              </Link>
+            </>
+          )}
+          {!hideNavElements && (
+            <>
+              {isLoggedIn ? (
+                <div className="fe-account-v desktop-only" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+                  <div className="fe-profile-v">
+                    {user.profileImage ? (
+                      <img
+                        src={user.profileImage.startsWith('http') ? user.profileImage : `http://localhost:5001/uploads/${user.profileImage}`}
+                        alt=""
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <User size={18} />
+                    )}
+                  </div>
+                  <span>{user.name?.split(' ')[0] || 'ACCOUNT'}</span>
+                  <ChevronDown size={14} className={`fe-dropdown-arrow-v ${isDropdownOpen ? 'rotate' : ''}`} />
+
+                  {isDropdownOpen && (
+                    <div className="fe-dropdown-menu-v">
+                      <Link to="/user/profile" className="fe-dropdown-item-v">
+                        <UserCircle size={16} />
+                        <span>Profile</span>
+                      </Link>
+                      <Link to="/watchlist" className="fe-dropdown-item-v">
+                        <List size={16} />
+                        <span>My Watchlist</span>
+                      </Link>
+                      <div className="fe-dropdown-divider-v"></div>
+                      <button onClick={handleLogout} className="fe-dropdown-item-v logout-v">
+                        <LogOut size={16} />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link to="/login" className="fe-signin-btn-v desktop-only">
+                  <LogOut size={16} className="rotate-180" />
+                  <span>SIGN IN</span>
+                </Link>
+              )}
+              <div className={`fe-mobile-toggle-v ${isMenuOpen ? 'active' : ''}`} onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                <Menu size={24} className="icon-menu-v" />
+                <X size={24} className="icon-close-v" />
+              </div>
+            </>
+          )}
+        </div>
+      </nav>
+
+      {/* Search Overlay */}
+      {isSearchOpen && (
+        <div className="fe-search-overlay-v">
+          <button className="fe-search-close-v" onClick={() => setIsSearchOpen(false)}>
+            <X size={32} />
+          </button>
+
+          <div className="fe-search-container-v">
+            <div className="fe-search-input-group-v">
+              <label>SEARCH</label>
+              <input
+                type="text"
+                placeholder="Search movies, shows, sports..."
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="fe-search-results-v">
+              {searchQuery.length > 0 ? (
+                <div className="fe-search-category-v">
+                  <h3>Results</h3>
+                  <div className="fe-search-row-v">
+                    {movies
+                      .filter(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .slice(0, 12)
+                      .map(m => (
+                        <Link
+                          to={`/details/movie/${m._id}`}
+                          key={m._id}
+                          className="fe-search-card-v"
+                          onClick={() => setIsSearchOpen(false)}
+                          style={{ textDecoration: 'none' }}
+                        >
+                          <div className="fe-search-poster-v">
+                            {formatImageUrl(m) && <img src={formatImageUrl(m)} alt={m.title} />}
+                          </div>
+                          <span className="fe-search-card-title-v">{m.title}</span>
+                        </Link>
+                      ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="fe-search-empty-v">Start typing to search...</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .fe-navbar-v { position: absolute; top: 0; left: 0; width: 100%; height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 60px; z-index: 11000; transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); background: transparent; }
+        .fe-navbar-v.hidden { opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-20px); }
+        .fe-navbar-v.transparent { background: transparent; }
+        .fe-navbar-v.scrolled { background: transparent; backdrop-filter: none; height: 75px; box-shadow: none; }
+        
+        .fe-nav-left { display: flex; align-items: center; }
+        .fe-logo-v { width: 180px; height: auto; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
+        .fe-logo-v.hidden { opacity: 0; pointer-events: none; }
+        .fe-logo-v img { width: 100%; height: auto; object-fit: contain; }
+        
+        .fe-nav-center-v { display: flex; gap: 35px; align-items: center; }
+        .fe-nav-center-v a { color: #fff; text-decoration: none; font-size: 0.85rem; font-weight: 800; letter-spacing: 1.5px; opacity: 0.6; transition: 0.3s; }
+        .fe-nav-center-v a:hover, .fe-nav-center-v a.active { opacity: 1; color: #b3d332; }
+        
+        .fe-nav-right { display: flex; align-items: center; gap: 25px; }
+        .fe-nav-icon { color: #fff; cursor: pointer; transition: 0.3s; }
+        .fe-nav-icon:hover { color: #b3d332; transform: scale(1.1); }
+        
+        .fe-account-v { display: flex; align-items: center; gap: 10px; cursor: pointer; position: relative; padding: 5px 10px; border-radius: 30px; transition: 0.3s; }
+        .fe-account-v:hover { background: rgba(255,255,255,0.05); }
+        .fe-account-v span { font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; color: rgba(255,255,255,0.8); }
+        .fe-profile-v { width: 32px; height: 32px; border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); overflow: hidden; }
+        .fe-dropdown-arrow-v { color: rgba(255,255,255,0.4); transition: 0.3s; }
+        .fe-dropdown-arrow-v.rotate { transform: rotate(180deg); }
+        
+        .fe-dropdown-menu-v { position: absolute; top: calc(100% + 15px); right: 0; background: #111; border: 1px solid #222; border-radius: 12px; min-width: 200px; padding: 10px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); animation: feDropdownSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; }
+        @keyframes feDropdownSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .fe-dropdown-item-v { display: flex; align-items: center; gap: 12px; padding: 12px 15px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.85rem; font-weight: 600; border-radius: 8px; transition: 0.2s; border: none; background: none; width: 100%; text-align: left; cursor: pointer; }
+        .fe-dropdown-item-v:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .fe-dropdown-item-v.logout-v { color: #ff4d4d; }
+        .fe-dropdown-item-v.logout-v:hover { background: rgba(255,77,77,0.1); }
+        .fe-dropdown-divider-v { height: 1px; background: #222; margin: 8px 10px; }
+        
+        .fe-signin-btn-v { background: #b3d332; color: #fff; text-decoration: none; padding: 10px 25px; border-radius: 30px; font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; transition: 0.3s; box-shadow: 0 10px 20px rgba(179,211,50,0.2); }
+        .fe-signin-btn-v:hover { transform: scale(1.05); background: #b3d332; box-shadow: 0 15px 30px rgba(179,211,50,0.4); }
+        .rotate-180 { transform: rotate(180deg); }
+        
+        .fe-search-overlay-v { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: #000; z-index: 12000; padding: 100px 10%; display: flex; flex-direction: column; animation: feFadeIn 0.4s ease-out; }
+        @keyframes feFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .fe-search-close-v { position: absolute; top: 30px; right: 60px; background: none; border: none; color: #fff; cursor: pointer; transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; }
+        .fe-search-close-v:hover { transform: rotate(90deg) scale(1.2); color: #b3d332; }
+        .fe-mobile-toggle-v { display: none; cursor: pointer; color: #fff; position: relative; z-index: 11000; transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); width: 40px; height: 40px; align-items: center; justify-content: center; }
+        .fe-mobile-toggle-v:hover { transform: scale(1.15); color: #b3d332; }
+        .fe-mobile-toggle-v.active:hover { transform: scale(1.15) rotate(90deg); }
+        .fe-mobile-toggle-v svg { transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .icon-close-v { display: none; }
+        .fe-mobile-toggle-v.active .icon-menu-v { display: none; }
+        .fe-mobile-toggle-v.active .icon-close-v { display: block; color: #b3d332; }
+
+        @media (max-width: 1024px) {
+          .desktop-only { display: none !important; }
+          .fe-mobile-toggle-v { display: flex; }
+          .fe-navbar-v { padding: 0 20px; height: 70px; }
+          .fe-logo-v { width: 180px; }
+        }
+
+        /* Search Overlay */
+        .fe-search-overlay-v { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); z-index: 6000; backdrop-filter: blur(20px); display: flex; flex-direction: column; align-items: center; padding-top: 100px; animation: searchFadeIn 0.3s ease-out; }
+        @keyframes searchFadeIn { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: scale(1); } }
+        .fe-search-close-v { position: absolute; top: 40px; right: 40px; background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; transition: 0.3s; }
+        .fe-search-close-v:hover { color: #b3d332; transform: rotate(90deg); }
+        .fe-search-container-v { width: 90%; max-width: 1400px; }
+        .fe-search-input-group-v { display: flex; flex-direction: column; gap: 8px; margin-bottom: 40px; }
+        .fe-search-input-group-v label { color: rgba(255,255,255,0.7); font-size: 0.7rem; font-weight: 800; letter-spacing: 1.5px; }
+        .fe-search-input-group-v input { background: rgba(255,255,255,0.03); border: 1px solid #333; padding: 12px 20px; color: #fff; font-size: 1rem; font-weight: 500; outline: none; border-radius: 4px; width: 100%; }
+        .fe-search-results-v { height: calc(100vh - 350px); overflow-y: auto; }
+        .fe-search-category-v h3 { color: #fff; font-size: 1.2rem; font-weight: 800; margin-bottom: 25px; text-transform: uppercase; }
+        .fe-search-row-v { display: flex; gap: 25px; flex-wrap: wrap; }
+        .fe-search-card-v { width: 160px; transition: 0.3s; cursor: pointer; }
+        .fe-search-poster-v { width: 100%; aspect-ratio: 2/3; border-radius: 8px; overflow: hidden; background: #111; margin-bottom: 12px; }
+        .fe-search-poster-v img { width: 100%; height: 100%; object-fit: cover; }
+        .fe-search-card-title-v { color: #fff; font-size: 0.85rem; font-weight: 700; opacity: 0.6; }
+      ` }} />
+    </>
+  );
+};
+
+export default FrontendNavbar;
