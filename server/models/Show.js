@@ -22,6 +22,8 @@ const showSchema = new mongoose.Schema({
   keywords: String,
   imdbId: String,
   rating: { type: String, default: '4.8' }, // For frontend display fallback
+  contentType: { type: String, default: 'TV Show' }, // For separating standard TV Shows and Short Web Series
+  views: { type: Number, default: 0 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Show', showSchema);

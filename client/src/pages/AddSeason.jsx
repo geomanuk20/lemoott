@@ -35,9 +35,20 @@ const AddSeason = () => {
   fetchShows();
  }, []);
 
+ const isShortPath = window.location.pathname.includes('/short-web-series');
+
  const handleChange = (e) => {
   const { name, value } = e.target;
-  setFormData(prev => ({ ...prev, [name]: value }));
+  if (name === 'showId') {
+   const selectedShowObj = shows.find(s => s._id === value);
+   setFormData(prev => ({ 
+    ...prev, 
+    showId: value,
+    showName: selectedShowObj ? selectedShowObj.title : ''
+   }));
+  } else {
+   setFormData(prev => ({ ...prev, [name]: value }));
+  }
  };
 
  const handleFileChange = async (e, field) => {
@@ -68,7 +79,7 @@ const AddSeason = () => {
     body: JSON.stringify(formData)
    });
    if (response.ok) {
-    navigate('/admin/tv-shows/seasons');
+    navigate(isShortPath ? '/admin/short-web-series/seasons' : '/admin/tv-shows/seasons');
    }
   } catch (err) {
    console.error('Error adding season:', err);
@@ -80,7 +91,7 @@ const AddSeason = () => {
  return (
   <div className="add-season-page">
    <div className="top-nav">
-    <button className="back-btn" onClick={() => navigate('/admin/tv-shows/seasons')}>
+    <button className="back-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/seasons' : '/admin/tv-shows/seasons')}>
      <ChevronLeft size={24} />
      <span>Back</span>
     </button>
@@ -96,9 +107,12 @@ const AddSeason = () => {
        <label>Shows</label>
        <select name="showId" value={formData.showId} onChange={handleChange} required>
         <option value="">Select Show</option>
-        {shows.map(show => (
-         <option key={show._id} value={show._id}>{show.title}</option>
-        ))}
+        {shows
+         .filter(show => isShortPath ? show.contentType === 'Short Web Series' : (show.contentType === 'TV Show' || !show.contentType))
+         .map(show => (
+          <option key={show._id} value={show._id}>{show.title}</option>
+         ))
+        }
        </select>
       </div>
 

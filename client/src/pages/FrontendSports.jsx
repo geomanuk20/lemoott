@@ -55,7 +55,7 @@ const FrontendSports = () => {
    <section className="fe-movies-hero">
     <div className="hero-overlay"></div>
     <div className="hero-content">
-     <h1>Sports.</h1>
+     <h1>Sports<span style={{ color: '#b3d332' }}>.</span></h1>
      <p>Watch live sports, highlights and exclusive athletic events here to watch fixed</p>
     </div>
    </section>

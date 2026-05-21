@@ -327,6 +327,41 @@ const EditSportsVideo = () => {
         </div>
        )}
 
+       {formData.videoType === 'URL' && (
+        <div className="video-file-group">
+         <p className="hint-text" style={{ marginBottom: '15px' }}>(Supported : MP4 URL. If you are using external files then those files have to be CORS enabled otherwise they will not work.)</p>
+         <div className="form-row-custom stacked">
+          <div className="label-text">Video URL <span className="sub-hint">(Default Player File)</span></div>
+          <input type="text" name="videoFile" value={formData.videoFile} onChange={handleChange} placeholder="https://..." />
+         </div>
+         {['480', '720', '1080'].map(res => (
+          <div className="form-row-custom stacked" key={res}>
+           <div className="label-text">Video URL {res}P</div>
+           <input type="text" name={`videoFile${res}`} value={formData[`videoFile${res}`] || ''} onChange={handleChange} placeholder="http://..." />
+          </div>
+         ))}
+        </div>
+       )}
+
+       {formData.videoType === 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo' && (
+        <div className="video-file-group">
+         <p className="hint-text" style={{ marginBottom: '15px' }}>(Supported : MP4, YouTube, Vimeo, HLS / m3u8 URL. If you are using external files then those files have to be CORS enabled otherwise they will not work.)</p>
+         <div className="form-row-custom stacked">
+          <div className="label-text">HLS Streaming URL</div>
+          <input type="text" name="videoFile" value={formData.videoFile} onChange={handleChange} placeholder="https://..." />
+         </div>
+        </div>
+       )}
+
+       {formData.videoType === 'Embed Code' && (
+        <div className="video-file-group">
+         <div className="form-row-custom stacked">
+          <div className="label-text">Video Embed Code</div>
+          <textarea name="videoFile" value={formData.videoFile} onChange={handleChange} rows="4" placeholder="Paste embed code here..." />
+         </div>
+        </div>
+       )}
+
        <div className="form-row-custom stacked mt-20">
         <div className="label-text">Download</div>
         <div className="custom-radio-group">
@@ -367,7 +402,7 @@ const EditSportsVideo = () => {
     .section-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 25px; border-left: 4px solid #b3d332; padding-left: 15px; line-height: 1; }
     .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
     .form-group label { font-weight: 700; font-size: 0.95rem; }
-    .form-group input, .form-group select, .form-group textarea { background: #1a1a1a; border: 1px solid #333; padding: 12px 15px; color: #fff; border-radius: 6px; outline: none; }
+    .form-group input, .form-group select, .form-group textarea, .form-row-custom select, .form-row-custom input { background: #1a1a1a; border: 1px solid #333; padding: 12px 15px; color: #fff; border-radius: 6px; outline: none; }
     .form-row-custom { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
     .form-row-custom.stacked { grid-template-columns: 150px 1fr; align-items: center; }
     .form-group-custom { display: flex; flex-direction: column; gap: 8px; }

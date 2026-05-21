@@ -5,7 +5,7 @@ import { Editor } from '@tinymce/tinymce-react';
 import { ChevronLeft, Save, ChevronDown } from 'lucide-react';
 import { formatImageUrl } from '../utils/image';
 
-const AddShow = () => {
+const AddShortWebSeries = () => {
  const navigate = useNavigate();
  const posterInputRef = useRef(null);
  const thumbnailInputRef = useRef(null);
@@ -31,7 +31,7 @@ const AddShow = () => {
   metaDescription: '',
   keywords: '',
   imdbId: '',
-  contentType: 'TV Show'
+  contentType: 'Short Web Series' // Pre-segregate at database level
  });
 
  const [languages, setLanguages] = useState([]);
@@ -103,14 +103,14 @@ const AddShow = () => {
     body: JSON.stringify(formData)
    });
    if (response.ok) {
-    navigate('/admin/tv-shows/shows');
+    navigate('/admin/short-web-series');
    } else {
     const errorData = await response.json();
-    alert(`Failed to add show: ${errorData.message}`);
+    alert(`Failed to add short web series: ${errorData.message}`);
    }
   } catch (err) {
-   console.error('Error adding show:', err);
-   alert('An error occurred while adding the show.');
+   console.error('Error adding short web series:', err);
+   alert('An error occurred while adding the short web series.');
   } finally {
    setLoading(false);
   }
@@ -118,14 +118,13 @@ const AddShow = () => {
 
  const fetchImdbData = async () => {
   if (!formData.imdbId) return;
-  // Mock IMDb fetch for now
   alert('IMDb data fetching logic will be implemented here');
  };
 
  return (
   <div className="add-show-page">
    <div className="top-nav">
-    <button className="back-btn" onClick={() => navigate('/admin/tv-shows/shows')}>
+    <button className="back-btn" onClick={() => navigate('/admin/short-web-series')}>
      <ChevronLeft size={24} />
      <span>Back</span>
     </button>
@@ -148,12 +147,12 @@ const AddShow = () => {
 
    <form onSubmit={handleSubmit}>
     <div className="form-grid">
-     {/* Left Column: Show Info */}
+     {/* Left Column: Series Info */}
      <div className="form-column">
-      <h2 className="section-title">Show Info</h2>
+      <h2 className="section-title">Short Web Series Info</h2>
       
       <div className="form-group">
-       <label>Show Name*</label>
+       <label>Series Title*</label>
        <input type="text" name="title" value={formData.title} onChange={handleChange} required />
       </div>
 
@@ -461,7 +460,7 @@ const AddShow = () => {
     .save-btn {
      background: #b3d332; color: #fff; border: none; padding: 12px 40px; border-radius: 4px;
      display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1rem; cursor: pointer;
-     box-shadow: 0 4px 10px rgba(255, 0, 0, 0.2); transition: transform 0.2s;
+     transition: transform 0.2s;
     }
     .save-btn:hover { transform: translateY(-2px); }
     .save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -480,4 +479,4 @@ const AddShow = () => {
  );
 };
 
-export default AddShow;
+export default AddShortWebSeries;

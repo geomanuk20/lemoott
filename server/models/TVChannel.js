@@ -14,7 +14,8 @@ const tvChannelSchema = new mongoose.Schema({
   logo: { type: String },
   seoTitle: { type: String },
   metaDescription: { type: String },
-  keywords: { type: String }
+  keywords: { type: String },
+  views: { type: Number, default: 0 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('TVChannel', tvChannelSchema);

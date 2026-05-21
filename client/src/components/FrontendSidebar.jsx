@@ -8,7 +8,8 @@ const FrontendSidebar = ({
   setIsSearchOpen,
   searchQuery,
   setSearchQuery,
-  settings = null
+  settings = null,
+  menuSettings = null
 }) => {
   const location = useLocation();
   const [isAccountOpen, setIsAccountOpen] = React.useState(false);
@@ -117,10 +118,24 @@ const FrontendSidebar = ({
 
           <div className="fe-sidebar-links-v">
             <Link to="/" className={location.pathname === '/' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>HOME</Link>
-            <Link to="/movies" className={location.pathname === '/movies' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>MOVIES</Link>
-            <Link to="/shows" className={location.pathname === '/shows' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>TV SHOWS</Link>
-            <Link to="/sports" className={location.pathname === '/sports' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>SPORTS</Link>
-            <Link to="/live-tv" className={location.pathname === '/live-tv' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>LIVE TV</Link>
+            {(!menuSettings || menuSettings.movies?.toUpperCase() !== 'OFF') && (
+              <Link to="/movies" className={location.pathname === '/movies' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>MOVIES</Link>
+            )}
+            {(!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF') && (
+              <Link to="/shows" className={location.pathname === '/shows' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>TV SHOWS</Link>
+            )}
+            {(!menuSettings || menuSettings.sports?.toUpperCase() !== 'OFF') && (
+              <Link to="/sports" className={location.pathname === '/sports' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>SPORTS</Link>
+            )}
+            {(!menuSettings || menuSettings.liveTv?.toUpperCase() !== 'OFF') && (
+              <Link to="/live-tv" className={location.pathname === '/live-tv' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>LIVE TV</Link>
+            )}
+            {(!menuSettings || menuSettings.shortFilms?.toUpperCase() !== 'OFF') && (
+              <Link to="/short-films" className={location.pathname === '/short-films' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>SHORT FILMS</Link>
+            )}
+            {(!menuSettings || menuSettings.webSeries?.toUpperCase() !== 'OFF') && (
+              <Link to="/web-series" className={location.pathname === '/web-series' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>WEB SERIES</Link>
+            )}
           </div>
         </div>
       </div>

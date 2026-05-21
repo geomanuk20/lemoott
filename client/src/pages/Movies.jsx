@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, Film } from 'lucide-react';
 import Loader from '../components/Loader';
 import { formatImageUrl } from '../utils/image';
@@ -8,6 +8,7 @@ const API_URL = 'http://localhost:5001/api/movies';
 
 const Movies = () => {
  const navigate = useNavigate();
+ const location = useLocation();
  const [movies, setMovies] = useState([]);
  const [loading, setLoading] = useState(false);
  const [searchTerm, setSearchTerm] = useState('');
@@ -65,12 +66,23 @@ const Movies = () => {
   fetchFilters();
  }, []);
 
+ useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  const genreParam = params.get('genre');
+  if (genreParam) {
+   setSelectedGenre(genreParam);
+  } else {
+   setSelectedGenre('');
+  }
+ }, [location.search]);
+
  // Filter movies
  const filteredMovies = movies.filter(movie => {
+  const isMovie = !movie.contentType || movie.contentType === 'Movie';
   const matchesSearch = movie.title.toLowerCase().includes(searchTerm.toLowerCase());
   const matchesLanguage = selectedLanguage ? movie.language === selectedLanguage : true;
   const matchesGenre = selectedGenre ? movie.genres && movie.genres.includes(selectedGenre) : true;
-  return matchesSearch && matchesLanguage && matchesGenre;
+  return isMovie && matchesSearch && matchesLanguage && matchesGenre;
  });
 
  // Filter dropdown options

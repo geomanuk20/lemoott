@@ -50,7 +50,7 @@ const FrontendLiveTV = () => {
    <section className="fe-movies-hero">
     <div className="hero-overlay"></div>
     <div className="hero-content">
-     <h1>Live TV.</h1>
+     <h1>Live TV<span style={{ color: '#b3d332' }}>.</span></h1>
      <p>Watch live channels and broadcast events here to watch fixed</p>
     </div>
    </section>

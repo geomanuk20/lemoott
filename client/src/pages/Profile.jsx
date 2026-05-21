@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import Loader from '../components/Loader';
 
 const API_URL = 'http://localhost:5001/api/profile';
@@ -136,18 +136,18 @@ const Profile = () => {
 
  return (
   <div className="profile-page-container">
-   {notification && (
-    <div className="custom-alert-box">
-     <div className="alert-content">
-      {notification.type === 'success' ? (
-       <CheckCircle2 size={42} color="#00c853" strokeWidth={2.5} />
-      ) : (
-       <XCircle size={42} color="#ff4d4d" strokeWidth={2.5} />
-      )}
-      <span className="alert-text">{notification.message}</span>
+    {notification && (
+     <div className={`custom-alert-box ${notification.type}`}>
+      <div className="alert-content">
+       {notification.type === 'success' ? (
+        <CheckCircle2 size={20} strokeWidth={2.5} />
+       ) : (
+        <XCircle size={20} strokeWidth={2.5} />
+       )}
+       <span className="alert-text">{notification.message}</span>
+      </div>
      </div>
-    </div>
-   )}
+    )}
 
    <div className="profile-inner-box">
     <form onSubmit={handleSubmit} className="profile-layout">
@@ -267,34 +267,42 @@ const Profile = () => {
      to { transform: rotate(360deg); }
     }
 
-    .custom-header-alert {
-     position: fixed;
-     top: 30px;
-     right: 30px;
-     background-color: #ffffff;
-     border-radius: 4px;
-     padding: 15px 30px;
-     box-shadow: 0 4px 25px rgba(0,0,0,0.4);
-     z-index: 9999;
-     animation: alertSlideIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-     min-width: 400px;
+    .custom-alert-box { 
+     position: fixed; 
+     bottom: 40px; 
+     left: 50%; 
+     transform: translateX(-50%); 
+     background: #b3d332; 
+     color: #fff; 
+     padding: 12px 25px; 
+     border-radius: 50px; 
+     display: flex; 
+     align-items: center; 
+     justify-content: center;
+     z-index: 9999; 
+     box-shadow: 0 15px 30px rgba(0,0,0,0.4); 
+     animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+     border: 1px solid rgba(255,255,255,0.25);
     }
-
-    @keyframes alertSlideIn {
-     from { transform: translateX(100%); opacity: 0; }
-     to { transform: translateX(0); opacity: 1; }
+    .custom-alert-box.error { 
+     background: #ff4d4d; 
     }
-
-    .alert-content {
-     display: flex;
-     align-items: center;
-     gap: 20px;
+    .alert-content { 
+     display: flex; 
+     align-items: center; 
+     gap: 12px; 
     }
-
-    .alert-text {
-     color: #333333;
-     font-size: 1.3rem;
-     font-weight: 700;
+    .alert-text { 
+     color: #fff; 
+     font-size: 1rem; 
+     font-weight: 700; 
+     text-align: center; 
+     letter-spacing: -0.2px;
+    }
+    
+    @keyframes slideUp { 
+     from { transform: translate(-50%, 20px); opacity: 0; } 
+     to { transform: translate(-50%, 0); opacity: 1; } 
     }
 
     .profile-inner-box {

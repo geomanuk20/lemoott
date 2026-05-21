@@ -19,6 +19,7 @@ const EditMovie = () => {
  const [availableGenres, setAvailableGenres] = useState([]);
  const [availableActors, setAvailableActors] = useState([]);
  const [availableDirectors, setAvailableDirectors] = useState([]);
+ const [languages, setLanguages] = useState([]);
  const [isActorsOpen, setIsActorsOpen] = useState(false);
  const [isDirectorsOpen, setIsDirectorsOpen] = useState(false);
  const [isGenresOpen, setIsGenresOpen] = useState(false);
@@ -67,11 +68,12 @@ const EditMovie = () => {
  useEffect(() => {
   const fetchData = async () => {
    try {
-    const [movieRes, genreRes, actorsRes, directorsRes] = await Promise.all([
+    const [movieRes, genreRes, actorsRes, directorsRes, langRes] = await Promise.all([
      fetch(`http://localhost:5001/api/movies/${id}`),
      fetch('http://localhost:5001/api/genres'),
      fetch('http://localhost:5001/api/actors'),
-     fetch('http://localhost:5001/api/directors')
+     fetch('http://localhost:5001/api/directors'),
+     fetch('http://localhost:5001/api/languages')
     ]);
     
     if (movieRes.ok) {
@@ -118,6 +120,7 @@ const EditMovie = () => {
     setAvailableGenres(await genreRes.json());
     setAvailableActors(await actorsRes.json());
     setAvailableDirectors(await directorsRes.json());
+    setLanguages(await langRes.json());
    } catch (err) {
     console.error('Error fetching data:', err);
    } finally {
@@ -264,10 +267,11 @@ const EditMovie = () => {
        </div>
        <div className="form-group">
         <label>Language</label>
-        <select name="language" value={formData.language} onChange={handleChange}>
-         <option>Select Language</option>
-         <option value="English">English</option>
-         <option value="Hindi">Hindi</option>
+        <select name="language" value={formData.language} onChange={handleChange} required>
+         <option value="">Select Language</option>
+         {languages.map(lang => (
+          <option key={lang._id} value={lang.name}>{lang.name}</option>
+         ))}
         </select>
        </div>
        <div className="form-group">
@@ -491,6 +495,35 @@ const EditMovie = () => {
         </div>
        )}
 
+       {formData.videoType === 'URL' && (
+        <div className="url-video-inputs">
+         <div className="form-group">
+          <label>Video URL*</label>
+          <input type="text" name="videoFile" value={formData.videoFile} onChange={handleChange} placeholder="https://..." />
+         </div>
+         {['480', '720', '1080'].map(res => (
+          <div className="form-group" key={res}>
+           <label>Video URL {res}P</label>
+           <input type="text" name={`videoFile${res}`} value={formData[`videoFile${res}`] || ''} onChange={handleChange} placeholder="https://..." />
+          </div>
+         ))}
+        </div>
+       )}
+
+       {formData.videoType === 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo' && (
+        <div className="form-group">
+         <label>HLS / Streaming URL*</label>
+         <input type="text" name="videoFile" value={formData.videoFile} onChange={handleChange} placeholder="https://..." />
+        </div>
+       )}
+
+       {formData.videoType === 'Embed Code' && (
+        <div className="form-group">
+         <label>Video Embed Code*</label>
+         <textarea name="videoFile" value={formData.videoFile} onChange={handleChange} placeholder="Paste embed code here..." style={{ background: '#1a1a1a', border: '1px solid #333', padding: '12px 15px', color: '#fff', borderRadius: '4px', outline: 'none', width: '100%', height: '100px', resize: 'none' }}></textarea>
+        </div>
+       )}
+
        <div className="form-row-custom stacked mt-20">
         <div className="label-text">Download</div>
         <div className="custom-radio-group">
@@ -595,6 +628,7 @@ const EditMovie = () => {
     .save-movie-btn { background: #b3d332; color: #fff; border: none; padding: 12px 40px; border-radius: 4px; display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1rem; cursor: pointer; transition: transform 0.2s; }
     .save-movie-btn:hover { transform: translateY(-2px); }
     .video-source-row { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 20px; margin-bottom: 20px; }
+    .video-source-row select { width: 100%; background: #2c2c2c; border: 1px solid #333; padding: 12px; border-radius: 4px; color: #fff; }
     .form-row-custom.stacked { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 20px; margin-bottom: 20px; }
 
     /* Custom Dropdown Styling */

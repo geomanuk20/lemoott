@@ -49,7 +49,7 @@ const FrontendShows = () => {
    <section className="fe-movies-hero">
     <div className="hero-overlay"></div>
     <div className="hero-content">
-     <h1>TV Shows.</h1>
+     <h1>TV Shows<span style={{ color: '#b3d332' }}>.</span></h1>
      <p>All your favorite series and exclusive shows here to watch fixed</p>
     </div>
    </section>

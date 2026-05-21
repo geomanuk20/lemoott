@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const movieSchema = new mongoose.Schema({
   imdbId: String,
   title: { type: String, required: true },
+  contentType: { type: String, default: 'Movie' },
   description: String,
   sortInfo: String,
   upcoming: { type: String, default: 'No' },
@@ -39,7 +40,8 @@ const movieSchema = new mongoose.Schema({
   
   seoTitle: String,
   metaDescription: String,
-  keywords: String
+  keywords: String,
+  views: { type: Number, default: 0 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Movie', movieSchema);

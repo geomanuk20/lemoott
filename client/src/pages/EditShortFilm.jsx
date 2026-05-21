@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Editor } from '@tinymce/tinymce-react';
 import { ArrowLeft, Save, Upload, Info, Image as ImageIcon, Video, Search, Globe, FileText, X, ChevronDown } from 'lucide-react';
 import { uploadToCloudinary } from '../utils/upload';
 
-const AddMovie = () => {
+const EditShortFilm = () => {
  const navigate = useNavigate();
+ const { id } = useParams();
  const thumbnailInputRef = useRef(null);
  const posterInputRef = useRef(null);
  const videoInputRef = useRef(null);
@@ -27,6 +28,7 @@ const AddMovie = () => {
  const [formData, setFormData] = useState({
   imdbId: '',
   title: '',
+  contentType: 'Short Film', // Strictly set to Short Film
   description: '',
   upcoming: 'No',
   access: 'Paid',
@@ -60,6 +62,51 @@ const AddMovie = () => {
   metaDescription: '',
   keywords: ''
  });
+
+ useEffect(() => {
+  const fetchShortFilm = async () => {
+   try {
+    const res = await fetch(`http://localhost:5001/api/movies/${id}`);
+    const data = await res.json();
+    if (data.releaseDate) {
+     data.releaseDate = new Date(data.releaseDate).toISOString().split('T')[0];
+    }
+    // Set fallback subtitles structure if not present
+    if (!data.subtitles || data.subtitles.length === 0) {
+     data.subtitles = [
+      { language: 'English', url: '' },
+      { language: 'French', url: '' },
+      { language: 'Spanish', url: '' }
+     ];
+    }
+    // Keep contentType as Short Film
+    data.contentType = 'Short Film';
+    setFormData(data);
+   } catch (err) {
+    console.error('Error fetching short film:', err);
+   }
+  };
+
+  const fetchFilters = async () => {
+   try {
+    const [genresRes, actorsRes, directorsRes, langRes] = await Promise.all([
+     fetch('http://localhost:5001/api/genres'),
+     fetch('http://localhost:5001/api/actors'),
+     fetch('http://localhost:5001/api/directors'),
+     fetch('http://localhost:5001/api/languages')
+    ]);
+    setAvailableGenres(await genresRes.json());
+    setAvailableActors(await actorsRes.json());
+    setAvailableDirectors(await directorsRes.json());
+    setLanguages(await langRes.json());
+   } catch (err) {
+    console.error('Error fetching data:', err);
+   }
+  };
+
+  fetchShortFilm();
+  fetchFilters();
+ }, [id]);
 
  const handleChange = (e) => {
   const { name, value } = e.target;
@@ -112,26 +159,6 @@ const AddMovie = () => {
   setFormData(prev => ({ ...prev, description: content }));
  };
 
- useEffect(() => {
-  const fetchData = async () => {
-   try {
-    const [genresRes, actorsRes, directorsRes, langRes] = await Promise.all([
-     fetch('http://localhost:5001/api/genres'),
-     fetch('http://localhost:5001/api/actors'),
-     fetch('http://localhost:5001/api/directors'),
-     fetch('http://localhost:5001/api/languages')
-    ]);
-    setAvailableGenres(await genresRes.json());
-    setAvailableActors(await actorsRes.json());
-    setAvailableDirectors(await directorsRes.json());
-    setLanguages(await langRes.json());
-   } catch (err) {
-    console.error('Error fetching data:', err);
-   }
-  };
-  fetchData();
- }, []);
-
  const handleSave = async (e) => {
   e.preventDefault();
   setLoading(true);
@@ -144,25 +171,25 @@ const AddMovie = () => {
     delete submissionData.releaseDate;
    }
 
-   const response = await fetch('http://localhost:5001/api/movies', {
-    method: 'POST',
+   const response = await fetch(`http://localhost:5001/api/movies/${id}`, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(submissionData)
    });
    
    if (response.ok) {
-    navigate('/admin/movies');
+    navigate('/admin/short-films');
    } else {
     const errorText = await response.text();
     try {
      const errorData = JSON.parse(errorText);
-     alert(`Failed to save movie: ${errorData.message}`);
+     alert(`Failed to save short film: ${errorData.message}`);
     } catch (e) {
-     alert(`Failed to save movie. Server error.`);
+     alert(`Failed to save short film. Server error.`);
     }
    }
   } catch (err) {
-   console.error('Error saving movie:', err);
+   console.error('Error saving short film:', err);
    alert('An error occurred while saving.');
   } finally {
    setLoading(false);
@@ -172,7 +199,7 @@ const AddMovie = () => {
  return (
   <div className="add-movie-page">
    <div className="top-nav">
-    <button className="back-btn" onClick={() => navigate('/admin/movies')}>
+    <button className="back-btn" onClick={() => navigate('/admin/short-films')}>
      <ArrowLeft size={18} />
      <span>Back</span>
     </button>
@@ -195,11 +222,11 @@ const AddMovie = () => {
 
    <form onSubmit={handleSave} className="movie-form">
     <div className="form-sections-wrapper">
-     <h2 className="section-title">Movie Info</h2>
+     <h2 className="section-title">Edit Short Film</h2>
      <div className="form-columns">
       <div className="form-column">
        <div className="form-group">
-        <label>Movie Title</label>
+        <label>Short Film Title</label>
         <input type="text" name="title" value={formData.title} onChange={handleChange} required />
        </div>
        <div className="form-group">
@@ -362,7 +389,7 @@ const AddMovie = () => {
         </div>
         <div className="form-group half">
          <label>Duration</label>
-         <input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="2h 15m" />
+         <input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="25m" />
         </div>
        </div>
        <div className="form-group">
@@ -614,4 +641,4 @@ const AddMovie = () => {
  );
 };
 
-export default AddMovie;
+export default EditShortFilm;

@@ -3,6 +3,27 @@ import { Link, useLocation } from 'react-router-dom';
 import { Search, Bookmark, User, Menu, X, LayoutDashboard, UserCircle, List, LogOut, ChevronDown } from 'lucide-react';
 import { formatBrandingUrl } from '../utils/branding';
 
+const isActive = (status) => {
+  if (status === undefined || status === null) return true;
+  if (typeof status === 'boolean') return status;
+  const str = String(status).toLowerCase().trim();
+  return str === 'active' || str === 'true' || str === '1';
+};
+
+const isMenuSettingActive = (item, menuSettings) => {
+  if (!menuSettings) return true;
+
+  const type = item.contentType;
+  if (type === 'Movie' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if (type === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
+  if (type === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if (type === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (type === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
+  if (type === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+
+  return true;
+};
+
 const FrontendNavbar = ({
   isTransparent = true,
   isMenuOpen,
@@ -13,7 +34,8 @@ const FrontendNavbar = ({
   setSearchQuery,
   movies = [],
   hideNavElements = false,
-  settings = null
+  settings = null,
+  menuSettings = null
 }) => {
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
@@ -71,10 +93,24 @@ const FrontendNavbar = ({
         {!hideNavElements && (
           <div className="fe-nav-center-v desktop-only">
             <Link to="/" className={location.pathname === '/' ? 'active' : ''}>HOME</Link>
-            <Link to="/movies" className={location.pathname === '/movies' ? 'active' : ''}>MOVIES</Link>
-            <Link to="/shows" className={location.pathname === '/shows' ? 'active' : ''}>TV SHOWS</Link>
-            <Link to="/sports" className={location.pathname === '/sports' ? 'active' : ''}>SPORTS</Link>
-            <Link to="/live-tv" className={location.pathname === '/live-tv' ? 'active' : ''}>LIVE TV</Link>
+            {(!menuSettings || menuSettings.movies?.toUpperCase() !== 'OFF') && (
+              <Link to="/movies" className={location.pathname === '/movies' ? 'active' : ''}>MOVIES</Link>
+            )}
+            {(!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF') && (
+              <Link to="/shows" className={location.pathname === '/shows' ? 'active' : ''}>TV SHOWS</Link>
+            )}
+            {(!menuSettings || menuSettings.sports?.toUpperCase() !== 'OFF') && (
+              <Link to="/sports" className={location.pathname === '/sports' ? 'active' : ''}>SPORTS</Link>
+            )}
+            {(!menuSettings || menuSettings.liveTv?.toUpperCase() !== 'OFF') && (
+              <Link to="/live-tv" className={location.pathname === '/live-tv' ? 'active' : ''}>LIVE TV</Link>
+            )}
+            {(!menuSettings || menuSettings.shortFilms?.toUpperCase() !== 'OFF') && (
+              <Link to="/short-films" className={location.pathname === '/short-films' ? 'active' : ''}>SHORT FILMS</Link>
+            )}
+            {(!menuSettings || menuSettings.webSeries?.toUpperCase() !== 'OFF') && (
+              <Link to="/web-series" className={location.pathname === '/web-series' ? 'active' : ''}>WEB SERIES</Link>
+            )}
           </div>
         )}
         <div className="fe-nav-right">
@@ -162,18 +198,21 @@ const FrontendNavbar = ({
                   <h3>Results</h3>
                   <div className="fe-search-row-v">
                     {movies
-                      .filter(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .slice(0, 12)
+                      .filter(m => isActive(m.status) && isMenuSettingActive(m, menuSettings) && m.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .slice(0, 16)
                       .map(m => (
                         <Link
-                          to={`/details/movie/${m._id}`}
+                          to={`/details/${m.routeType}/${m._id}`}
                           key={m._id}
                           className="fe-search-card-v"
                           onClick={() => setIsSearchOpen(false)}
                           style={{ textDecoration: 'none' }}
                         >
-                          <div className="fe-search-poster-v">
+                          <div className="fe-search-poster-v" style={{ position: 'relative' }}>
                             {formatImageUrl(m) && <img src={formatImageUrl(m)} alt={m.title} />}
+                            <span className={`fe-search-badge-v category-${m.routeType}`}>
+                              {m.contentType}
+                            </span>
                           </div>
                           <span className="fe-search-card-title-v">{m.title}</span>
                         </Link>
@@ -261,9 +300,38 @@ const FrontendNavbar = ({
         .fe-search-category-v h3 { color: #fff; font-size: 1.2rem; font-weight: 800; margin-bottom: 25px; text-transform: uppercase; }
         .fe-search-row-v { display: flex; gap: 25px; flex-wrap: wrap; }
         .fe-search-card-v { width: 160px; transition: 0.3s; cursor: pointer; }
-        .fe-search-poster-v { width: 100%; aspect-ratio: 2/3; border-radius: 8px; overflow: hidden; background: #111; margin-bottom: 12px; }
+        .fe-search-poster-v { width: 100%; aspect-ratio: 2/3; border-radius: 8px; overflow: hidden; background: #111; margin-bottom: 12px; position: relative; }
         .fe-search-poster-v img { width: 100%; height: 100%; object-fit: cover; }
-        .fe-search-card-title-v { color: #fff; font-size: 0.85rem; font-weight: 700; opacity: 0.6; }
+        .fe-search-card-title-v { color: #fff; font-size: 0.85rem; font-weight: 700; opacity: 0.6; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        
+        .fe-search-badge-v {
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          background: rgba(0, 0, 0, 0.75);
+          color: #b3d332;
+          font-size: 0.55rem;
+          font-weight: 800;
+          padding: 4px 8px;
+          border-radius: 4px;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          border: 1px solid rgba(179, 211, 50, 0.3);
+          backdrop-filter: blur(4px);
+          z-index: 5;
+        }
+        .fe-search-badge-v.category-show {
+          color: #00cc66;
+          border-color: rgba(0, 204, 102, 0.3);
+        }
+        .fe-search-badge-v.category-sports {
+          color: #ffd700;
+          border-color: rgba(255, 215, 0, 0.3);
+        }
+        .fe-search-badge-v.category-tv-channel {
+          color: #ff4d4d;
+          border-color: rgba(255, 77, 77, 0.3);
+        }
       ` }} />
     </>
   );

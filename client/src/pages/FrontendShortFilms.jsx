@@ -1,20 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
- Search, 
- Bookmark, 
- User, 
- Menu, 
- X, 
- ChevronRight,
  Play,
- Loader2,
  Crown
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import { Link } from 'react-router-dom';
 import FrontendLayout from '../components/FrontendLayout';
 
-const FrontendMovies = () => {
+const FrontendShortFilms = () => {
  const [movies, setMovies] = useState([]);
  const [loading, setLoading] = useState(true);
 
@@ -24,9 +17,9 @@ const FrontendMovies = () => {
    try {
     const res = await fetch('http://localhost:5001/api/movies');
     const data = await res.json();
-    setMovies(Array.isArray(data) ? data.filter(m => m.status === 'Active') : []);
+    setMovies(Array.isArray(data) ? data.filter(m => m.status === 'Active' && m.contentType === 'Short Film') : []);
    } catch (err) {
-    console.error('Error fetching movies:', err);
+    console.error('Error fetching short films:', err);
    } finally {
     setLoading(false);
    }
@@ -49,8 +42,8 @@ const FrontendMovies = () => {
    <section className="fe-movies-hero">
     <div className="hero-overlay"></div>
     <div className="hero-content">
-     <h1>Movies<span style={{ color: '#b3d332' }}>.</span></h1>
-     <p>All new released Hollywood and world movies here to watch fixed</p>
+     <h1>Short Films<span style={{ color: '#b3d332' }}>.</span></h1>
+     <p>Explore outstanding stories, creative concepts, and award-winning short films here to watch fixed</p>
     </div>
    </section>
 
@@ -97,7 +90,7 @@ const FrontendMovies = () => {
             <span className="age-badge">TV-G</span>
             <span className="year-text">{year}</span>
            </div>
-           <span className="genre-text-red">{movie.genres?.[0] || 'Action'}</span>
+           <span className="genre-text-red">{movie.genres?.[0] || 'Drama'}</span>
            <h3 className="movie-title-v">{movie.title}</h3>
           </div>
          </Link>
@@ -109,7 +102,7 @@ const FrontendMovies = () => {
    </section>
 
    <style dangerouslySetInnerHTML={{ __html: `
-    .fe-movies-hero { position: fixed; top: 0; left: 0; width: 100%; height: 45vh; min-height: 350px; background: url('https://images.unsplash.com/photo-1485846234645-a62644f84728?w=1920&q=80') center/cover; background-attachment: fixed; display: flex; align-items: center; padding: 0 10%; color: #fff; z-index: 1; overflow: hidden; cursor: pointer; }
+    .fe-movies-hero { position: fixed; top: 0; left: 0; width: 100%; height: 45vh; min-height: 350px; background: url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1920&q=80') center/cover; background-attachment: fixed; display: flex; align-items: center; padding: 0 10%; color: #fff; z-index: 1; overflow: hidden; cursor: pointer; }
     .hero-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 60%, transparent 100%), linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 20%); z-index: 5; }
     .hero-content { position: relative; z-index: 10; max-width: 800px; }
     .hero-content h1 { font-size: 5rem; font-weight: 800; margin: 0 0 15px 0; line-height: 1; letter-spacing: -2px; }
@@ -159,4 +152,4 @@ const FrontendMovies = () => {
  );
 };
 
-export default FrontendMovies;
+export default FrontendShortFilms;

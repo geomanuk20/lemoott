@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Shield, Edit2, CheckCircle2, Loader2, Camera, Bookmark, LogOut, CreditCard, FileText, Calendar, Download } from 'lucide-react';
+import { User, Mail, Phone, Shield, Edit2, CheckCircle2, XCircle, Loader2, Camera, Bookmark, LogOut, CreditCard, FileText, Calendar, Download } from 'lucide-react';
 import Loader from '../components/Loader';
 import FrontendLayout from '../components/FrontendLayout';
 
@@ -83,7 +83,10 @@ const FrontendProfile = () => {
      email: updatedUser.email,
      role: updatedUser.role,
      profileImage: updatedUser.profileImage,
-     phone: updatedUser.phone
+     phone: updatedUser.phone,
+     status: updatedUser.status,
+     subscriptionPlan: updatedUser.subscriptionPlan,
+     expiryDate: updatedUser.expiryDate
     };
     localStorage.setItem('user', JSON.stringify(newUserObj));
     setUser(newUserObj);
@@ -112,9 +115,11 @@ const FrontendProfile = () => {
   <FrontendLayout isTransparent={true}>
    <div className="fe-profile-page-v">
     {notification && (
-     <div className={`fe-notification-v ${notification.type}`}>
-      <CheckCircle2 size={20} />
-      <span>{notification.message}</span>
+     <div className={`fe-watchlist-notification-v ${notification.type}`}>
+      <div className="note-content-v">
+       {notification.type === 'success' ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+       <span>{notification.message}</span>
+      </div>
      </div>
     )}
 
@@ -370,9 +375,23 @@ const FrontendProfile = () => {
     .no-invoices-v { text-align: center; padding: 60px; color: #333; }
     .no-invoices-v p { margin-top: 15px; font-weight: 700; font-size: 1.1rem; }
 
-    .fe-notification-v { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #111; color: #fff; padding: 15px 30px; border-radius: 12px; display: flex; align-items: center; gap: 15px; z-index: 10000; border: 1px solid #222; box-shadow: 0 20px 40px rgba(0,0,0,0.5); animation: noteSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-    .fe-notification-v.error { color: #ff4d4d; border-color: rgba(255,77,77,0.2); }
-    @keyframes noteSlideIn { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+    .fe-watchlist-notification-v { 
+     position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); 
+     background: #b3d332; color: #fff; padding: 12px 25px; border-radius: 12px; 
+     display: flex; align-items: center; gap: 20px; z-index: 10000; 
+     font-weight: 800; box-shadow: 0 20px 40px rgba(0,0,0,0.5); 
+     animation: noteSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+     border: 1px solid rgba(255,255,255,0.2);
+    }
+    .fe-watchlist-notification-v.error {
+     background: #ff4d4d;
+    }
+    .note-content-v { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+    
+    @keyframes noteSlideUp {
+     from { transform: translate(-50%, 20px); opacity: 0; }
+     to { transform: translate(-50%, 0); opacity: 1; }
+    }
     
     .spinner-v { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

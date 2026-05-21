@@ -816,3 +816,75 @@ body {
   align-items: center;
   justify-content: center;
 }
+
+/* Premium Unified Global Alert / Toast Styles */
+.custom-alert-box,
+.custom-alert-box-v,
+.custom-alert-box-p { 
+  position: fixed !important; 
+  bottom: 40px !important; 
+  top: auto !important;
+  left: 50% !important; 
+  transform: translateX(-50%) !important; 
+  background: #b3d332 !important; 
+  color: #fff !important; 
+  padding: 12px 25px !important; 
+  border-radius: 50px !important; 
+  display: flex !important; 
+  align-items: center !important; 
+  justify-content: center !important;
+  z-index: 99999 !important; 
+  box-shadow: 0 15px 30px rgba(0,0,0,0.4) !important; 
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important; 
+  border: 1px solid rgba(255,255,255,0.25) !important;
+  height: auto !important;
+  width: auto !important;
+  min-width: unset !important;
+  max-width: 90% !important;
+}
+
+.custom-alert-box.error,
+.custom-alert-box-v.error,
+.custom-alert-box-p.error { 
+  background: #ff4d4d !important; 
+}
+
+.custom-alert-box .alert-content,
+.custom-alert-box-v .alert-content,
+.custom-alert-box-p .alert-content,
+.custom-alert-box .alert-content-v,
+.custom-alert-box-v .alert-content-v,
+.custom-alert-box-p .alert-content-v { 
+  display: flex !important; 
+  align-items: center !important; 
+  flex-direction: row !important;
+  gap: 12px !important; 
+}
+
+/* Make the svg icons look small, crisp and white */
+.custom-alert-box svg,
+.custom-alert-box-v svg,
+.custom-alert-box-p svg {
+  width: 20px !important;
+  height: 20px !important;
+  color: #fff !important;
+  stroke: #fff !important;
+}
+
+.custom-alert-box .alert-text,
+.custom-alert-box-v .alert-text,
+.custom-alert-box-p .alert-text { 
+  color: #fff !important; 
+  font-size: 1rem !important; 
+  font-weight: 700 !important; 
+  text-align: left !important; 
+  letter-spacing: -0.2px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: normal !important;
+}
+
+@keyframes slideUp { 
+  from { transform: translate(-50%, 20px); opacity: 0; } 
+  to { transform: translate(-50%, 0); opacity: 1; } 
+}

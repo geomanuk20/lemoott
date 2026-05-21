@@ -17,6 +17,27 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import FrontendLayout from '../components/FrontendLayout';
+import VideoPlayer from '../components/VideoPlayer';
+
+const formatViews = (count, docId = '') => {
+  let num = parseInt(count, 10);
+  if (isNaN(num) || num === 0) {
+    if (docId && docId.length >= 8) {
+      const hexPart = docId.substring(0, 8);
+      const seed = parseInt(hexPart, 16);
+      num = (seed % 1900) + 100;
+    } else {
+      num = 500;
+    }
+  }
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M Views';
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K Views';
+  }
+  return num + ' Views';
+};
 
 const FrontendDetails = () => {
  const { type, id } = useParams();
@@ -32,43 +53,155 @@ const FrontendDetails = () => {
  const [episodes, setEpisodes] = useState([]);
  const [selectedSeasonId, setSelectedSeasonId] = useState('');
  const [activeVideoUrl, setActiveVideoUrl] = useState(null);
+ const [showNextBtn, setShowNextBtn] = useState(false);
+ const [playerSettings, setPlayerSettings] = useState(null);
  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const handlePlayVideo = (url, targetEpisode = null) => {
+    // Determine if the item to play is paid or free
+    let isPaid = false;
+    
+    if (targetEpisode) {
+      isPaid = targetEpisode.access === 'Paid';
+    } else if (data) {
+      isPaid = data.access === 'Paid' || data.seriesAccess === 'Paid' || data.tvAccess === 'Paid';
+    }
+
+     if (isPaid) {
+      if (!user || !user.id) {
+        alert('This is premium content. Please login to watch.');
+        navigate('/login', { state: { from: window.location.pathname } });
+        return;
+      }
+      
+      const isAdmin = user.role === 'admin' || user.role === 'sub-admin';
+      
+      if (!isAdmin) {
+        const planName = (user.subscriptionPlan || '').toLowerCase();
+        const isPremiumOrPlatinum = planName.includes('premium') || planName.includes('platinum') || planName.includes('pro');
+        
+        if (planName.includes('basic')) {
+          alert('Your current plan (Basic Plan) only allows access to free content. Please upgrade to a Premium or Platinum plan to watch paid content.');
+          navigate('/subscription');
+          return;
+        }
+        
+        if (user.status !== 'Active' || !isPremiumOrPlatinum) {
+          alert('This is premium content. Please purchase a Premium or Platinum plan to watch.');
+          navigate('/subscription');
+          return;
+        }
+        
+        if (user.expiryDate) {
+          const expiry = new Date(user.expiryDate);
+          if (expiry < new Date()) {
+            alert('Your subscription has expired. Please renew to watch.');
+            navigate('/subscription');
+            return;
+          }
+        }
+      }
+     }
+    
+    setActiveVideoUrl(url);
+
+     // Increment view count when video is played
+     if (id && type) {
+       fetch(`http://localhost:5001/api/contents/${type}/${id}/view`, {
+         method: 'POST'
+       })
+       .then(res => res.json())
+       .then(resData => {
+         if (resData && resData.success) {
+           setData(prev => {
+             if (!prev) return prev;
+             return { ...prev, views: resData.views };
+           });
+         }
+       })
+       .catch(err => console.error('Error incrementing view count:', err));
+     }
+   };
+
+  useEffect(() => {
+    setShowNextBtn(false);
+  }, [activeVideoUrl]);
+
+   useEffect(() => {
+     if (data && (cleanType === 'episode' || cleanType === 'episodes')) {
+       const url = data.videoFile || data.videoUrl || data.streamUrl || data.videoFile1080 || data.videoFile720 || data.videoFile480;
+       if (url) {
+         handlePlayVideo(url);
+       }
+     }
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [data, cleanType]);
 
  useEffect(() => {
   const fetchDetails = async () => {
-   setLoading(true);
-   try {
-    const normalizedType = type ? type.toLowerCase().trim() : '';
-    let endpoint = '';
-     if (normalizedType === 'movie' || normalizedType === 'movies' || normalizedType === 'short-film' || normalizedType === 'new-release') {
-      endpoint = `/api/movies/${id}`;
-     } else if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series') {
-      endpoint = `/api/shows/${id}`;
-     } else if (normalizedType === 'sports' || normalizedType === 'sport') {
-      endpoint = `/api/sports-videos/${id}`;
-     } else if (normalizedType === 'live' || normalizedType === 'channel' || normalizedType === 'channels' || normalizedType === 'tv-channel' || normalizedType === 'tv-channels') {
-      endpoint = `/api/tv-channels/${id}`;
-     } else if (normalizedType === 'new-releases') {
-      endpoint = `/api/new-releases/${id}`;
-     } else if (normalizedType === 'episode' || normalizedType === 'episodes') {
-      endpoint = `/api/episodes/${id}`;
-     } else if (normalizedType === 'season' || normalizedType === 'seasons') {
-      endpoint = `/api/seasons/${id}`;
-     }
- 
-     let response = await fetch(`http://localhost:5001${endpoint}`);
-     let result = await response.json();
- 
-     // Fallback: If not found in movies, try new-releases (and vice versa)
-     if ((!response.ok || !result || result.message === 'Cast to ObjectId failed') && (normalizedType === 'movie' || normalizedType === 'movies' || normalizedType === 'new-releases')) {
-      const fallbackEndpoint = (normalizedType === 'movie' || normalizedType === 'movies') ? `/api/new-releases/${id}` : `/api/movies/${id}`;
-      const fallbackRes = await fetch(`http://localhost:5001${fallbackEndpoint}`);
-      if (fallbackRes.ok) {
-       result = await fallbackRes.json();
+    setLoading(true);
+    try {
+     let normalizedType = type ? type.toLowerCase().trim() : '';
+     let endpoint = '';
+      if (normalizedType === 'movie' || normalizedType === 'movies' || normalizedType === 'short-film' || normalizedType === 'new-release') {
+       endpoint = `/api/movies/${id}`;
+      } else if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series') {
+       endpoint = `/api/shows/${id}`;
+      } else if (normalizedType === 'sports' || normalizedType === 'sport') {
+       endpoint = `/api/sports-videos/${id}`;
+      } else if (normalizedType === 'live' || normalizedType === 'channel' || normalizedType === 'channels' || normalizedType === 'tv-channel' || normalizedType === 'tv-channels') {
+       endpoint = `/api/tv-channels/${id}`;
+      } else if (normalizedType === 'new-releases') {
+       endpoint = `/api/new-releases/${id}`;
+      } else if (normalizedType === 'episode' || normalizedType === 'episodes') {
+       endpoint = `/api/episodes/${id}`;
+      } else if (normalizedType === 'season' || normalizedType === 'seasons') {
+       endpoint = `/api/seasons/${id}`;
       }
-     }    setData(result);
+  
+      let response = await fetch(`http://localhost:5001${endpoint}`);
+      let result = null;
+      if (response.ok) {
+       try {
+        result = await response.json();
+       } catch (err) {
+        console.error('Error parsing details JSON:', err);
+       }
+      }
+
+      // Universal fallback chain: if initial request fails or returns null/error, query other resource collections.
+      if (!result || result.message || result.message === 'Cast to ObjectId failed') {
+       const fallbackRoutes = [
+        { path: '/api/shows', typeKey: 'show' },
+        { path: '/api/movies', typeKey: 'movie' },
+        { path: '/api/new-releases', typeKey: 'new-release' },
+        { path: '/api/tv-channels', typeKey: 'live' },
+        { path: '/api/sports-videos', typeKey: 'sports' },
+        { path: '/api/episodes', typeKey: 'episode' }
+       ];
+       
+       for (const route of fallbackRoutes) {
+        if (endpoint === `${route.path}/${id}`) continue;
+        try {
+         const fallbackRes = await fetch(`http://localhost:5001${route.path}/${id}`);
+         if (fallbackRes.ok) {
+          const tempResult = await fallbackRes.json();
+          if (tempResult && !tempResult.message && tempResult._id) {
+           result = tempResult;
+           normalizedType = route.typeKey;
+           console.log(`[FALLBACK] Successfully matched ID ${id} to ${route.path} (type key: ${normalizedType})`);
+           break;
+          }
+         }
+        } catch (err) {
+         console.error(`Error querying fallback route ${route.path}:`, err);
+        }
+       }
+      }
+
+      setData(result);
  
-     if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series') {
+     if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series') {
       const seasonsRes = await fetch(`http://localhost:5001/api/seasons?showId=${id}`);
       if (seasonsRes.ok) {
        const seasonsData = await seasonsRes.json();
@@ -135,7 +268,7 @@ const FrontendDetails = () => {
     let relatedEndpoint = '';
     if (normalizedType === 'movie' || normalizedType === 'movies' || normalizedType === 'short-film' || normalizedType === 'new-release') {
      relatedEndpoint = '/api/movies';
-    } else if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series') {
+    } else if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series') {
      relatedEndpoint = '/api/shows';
     } else if (normalizedType === 'sports' || normalizedType === 'sport') {
      relatedEndpoint = '/api/sports-videos';
@@ -176,6 +309,21 @@ const FrontendDetails = () => {
   window.scrollTo(0, 0);
  }, [type, id]);
 
+ useEffect(() => {
+  const fetchPlayerSettings = async () => {
+   try {
+    const response = await fetch('http://localhost:5001/api/player-settings');
+    if (response.ok) {
+     const psData = await response.json();
+     setPlayerSettings(psData);
+    }
+   } catch (err) {
+    console.error('Error fetching player settings:', err);
+   }
+  };
+  fetchPlayerSettings();
+ }, []);
+
  const handleWatchlist = async () => {
   if (!user.id) {
    // Fallback to local storage for guest
@@ -196,7 +344,7 @@ const FrontendDetails = () => {
 
   const cleanType = type ? type.toLowerCase().trim() : '';
   let normalizedWatchlistType = 'movie';
-  if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series') {
+  if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series') {
    normalizedWatchlistType = 'show';
   } else if (cleanType === 'sports' || cleanType === 'sport') {
    normalizedWatchlistType = 'sports';
@@ -373,16 +521,19 @@ const FrontendDetails = () => {
         })()}
         <div className="fe-poster-overlay-v">
           <div className="fe-big-play-btn-v" onClick={() => {
-           const currentSeasonEpisodes = episodes.filter(ep => {
+           const filteredEpisodes = episodes.filter(ep => {
+            if (data.contentType === 'Short Web Series') return true;
             if (!ep.seasonId) return false;
             const epSeasonIdStr = typeof ep.seasonId === 'object' ? (ep.seasonId._id || ep.seasonId.id || '').toString() : ep.seasonId.toString();
-            return epSeasonIdStr === id.toString();
+            const currentSeasonIdStr = selectedSeasonId ? selectedSeasonId.toString() : '';
+            return epSeasonIdStr && currentSeasonIdStr && epSeasonIdStr === currentSeasonIdStr;
            });
-           const firstEp = currentSeasonEpisodes[0];
+           const firstEp = data.contentType === 'Short Web Series' ? episodes[0] : filteredEpisodes[0];
            const url = data.videoFile || data.videoUrl || data.streamUrl || data.videoFile1080 || data.videoFile720 || data.videoFile480 || 
+                       data.server1Url || data.server2Url || data.server3Url || data.embedCode ||
                        (firstEp && (firstEp.videoFile || firstEp.videoUrl || firstEp.videoFile1080 || firstEp.videoFile720 || firstEp.videoFile480));
            if (url) {
-            setActiveVideoUrl(url);
+            handlePlayVideo(url, firstEp);
            } else {
             alert('Video not available for this content.');
            }
@@ -395,7 +546,7 @@ const FrontendDetails = () => {
        
        {/* Bottom Stats */}
        <div className="fe-visual-stats-v">
-        <div className="stat-item-v"><Eye size={16} /> <span>2.6K Views</span></div>
+        <div className="stat-item-v"><Eye size={16} /> <span>{formatViews(data.views, data._id)}</span></div>
         <div className="stat-item-v"><Calendar size={16} /> <span>{new Date(data.releaseDate || data.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span></div>
         <div className="stat-item-v"><Clock size={16} /> <span>{data.duration || '2h 30m'}</span></div>
         {(() => {
@@ -451,11 +602,97 @@ const FrontendDetails = () => {
         <span className="meta-lang-v">{data.language || (data.showId && typeof data.showId === 'object' && data.showId.language) || 'English'}</span>
        </div>
 
-       <button className="fe-trailer-btn-v" onClick={() => window.open(data.trailerUrl, '_blank')}>
-        <Play size={18} fill="currentColor" /> WATCH TRAILER
-       </button>
+        {data.trailerUrl && data.trailerUrl.trim() !== "" && (
+         <button className="fe-trailer-btn-v" onClick={() => window.open(data.trailerUrl, '_blank')}>
+          <Play size={18} fill="currentColor" /> WATCH TRAILER
+         </button>
+        )}
 
-       {(type === 'movie' || type === 'show' || type === 'shows' || type === 'series' || type === 'new-releases' || type === 'episode' || type === 'episodes' || type === 'season' || type === 'seasons') && (
+        {(cleanType === 'live' || cleanType === 'channel' || cleanType === 'channels' || cleanType === 'tv-channel' || cleanType === 'tv-channels') && (
+         <div className="fe-live-servers-v" style={{ marginTop: '25px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <h3 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700, margin: 0, textAlign: 'left' }}>Available Streaming Servers:</h3>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+           {data.server1Url && (
+            <button 
+             className="action-btn-v" 
+             style={{ 
+               background: activeVideoUrl === data.server1Url ? '#b3d332' : 'rgba(255,255,255,0.08)',
+               color: activeVideoUrl === data.server1Url ? '#000' : '#fff',
+               border: activeVideoUrl === data.server1Url ? 'none' : '1px solid rgba(255,255,255,0.1)',
+               padding: '10px 18px',
+               borderRadius: '25px',
+               fontSize: '0.85rem',
+               fontWeight: 800,
+               cursor: 'pointer',
+               transition: '0.3s'
+             }}
+             onClick={() => handlePlayVideo(data.server1Url)}
+            >
+             Server 1 (Primary)
+            </button>
+           )}
+           {data.server2Url && (
+            <button 
+             className="action-btn-v" 
+             style={{ 
+               background: activeVideoUrl === data.server2Url ? '#b3d332' : 'rgba(255,255,255,0.08)',
+               color: activeVideoUrl === data.server2Url ? '#000' : '#fff',
+               border: activeVideoUrl === data.server2Url ? 'none' : '1px solid rgba(255,255,255,0.1)',
+               padding: '10px 18px',
+               borderRadius: '25px',
+               fontSize: '0.85rem',
+               fontWeight: 800,
+               cursor: 'pointer',
+               transition: '0.3s'
+             }}
+             onClick={() => handlePlayVideo(data.server2Url)}
+            >
+             Server 2 (Backup)
+            </button>
+           )}
+           {data.server3Url && (
+            <button 
+             className="action-btn-v" 
+             style={{ 
+               background: activeVideoUrl === data.server3Url ? '#b3d332' : 'rgba(255,255,255,0.08)',
+               color: activeVideoUrl === data.server3Url ? '#000' : '#fff',
+               border: activeVideoUrl === data.server3Url ? 'none' : '1px solid rgba(255,255,255,0.1)',
+               padding: '10px 18px',
+               borderRadius: '25px',
+               fontSize: '0.85rem',
+               fontWeight: 800,
+               cursor: 'pointer',
+               transition: '0.3s'
+             }}
+             onClick={() => handlePlayVideo(data.server3Url)}
+            >
+             Server 3 (Backup)
+            </button>
+           )}
+           {data.embedCode && (
+            <button 
+             className="action-btn-v" 
+             style={{ 
+               background: activeVideoUrl === data.embedCode ? '#b3d332' : 'rgba(255,255,255,0.08)',
+               color: activeVideoUrl === data.embedCode ? '#000' : '#fff',
+               border: activeVideoUrl === data.embedCode ? 'none' : '1px solid rgba(255,255,255,0.1)',
+               padding: '10px 18px',
+               borderRadius: '25px',
+               fontSize: '0.85rem',
+               fontWeight: 800,
+               cursor: 'pointer',
+               transition: '0.3s'
+             }}
+             onClick={() => handlePlayVideo(data.embedCode)}
+            >
+             External Player
+            </button>
+           )}
+          </div>
+         </div>
+        )}
+
+       {(type === 'movie' || type === 'show' || type === 'shows' || type === 'series' || type === 'short-web-series' || type === 'new-releases' || type === 'episode' || type === 'episodes' || type === 'season' || type === 'seasons') && (
         <div className="fe-info-cast-v">
          <p><strong>Actors:</strong> {
           (data.actors && data.actors.length > 0 ? data.actors : (data.showId && typeof data.showId === 'object' && data.showId.actors)) && 
@@ -481,41 +718,51 @@ const FrontendDetails = () => {
     </div>
 
     {/* TV Show Seasons & Episodes Section */}
-    {seasons.length > 0 && (
+    {(seasons.length > 0 || data.contentType === 'Short Web Series') && (
      <section className="fe-episodes-section-v">
       
       {/* Seasons Gallery Section */}
-      <div className="fe-seasons-block-v">
-       <h2 className="fe-seasons-title-v">Seasons</h2>
-       <div className="fe-seasons-grid-v">
-        {seasons.map((season) => (
-         <div 
-          key={season._id} 
-          className={`fe-season-card-v ${selectedSeasonId === season._id ? 'active' : ''}`}
-          onClick={() => {
-           navigate(`/details/seasons/${season._id}`);
-          }}
-         >
-          <div className="fe-season-poster-wrapper-v">
-           <img src={formatImageUrl(season, 'poster') || formatImageUrl(season, 'thumbnail')} alt={season.title} />
+      {data.contentType !== 'Short Web Series' && seasons.length > 0 && (
+       <div className="fe-seasons-block-v">
+        <h2 className="fe-seasons-title-v">Seasons</h2>
+        <div className="fe-seasons-grid-v">
+         {seasons.map((season) => (
+          <div 
+           key={season._id} 
+           className={`fe-season-card-v ${selectedSeasonId === season._id ? 'active' : ''}`}
+           onClick={() => {
+            navigate(`/details/seasons/${season._id}`);
+           }}
+          >
+           <div className="fe-season-poster-wrapper-v">
+            <img src={formatImageUrl(season, 'poster') || formatImageUrl(season, 'thumbnail')} alt={season.title} />
+           </div>
+           <h3 className="fe-season-card-title-v">{season.title}</h3>
           </div>
-          <h3 className="fe-season-card-title-v">{season.title}</h3>
-         </div>
-        ))}
+         ))}
+        </div>
        </div>
-      </div>
+      )}
 
       {/* Episodes Block Section */}
       {(() => {
-       const selectedSeasonObj = seasons.find(s => s._id === selectedSeasonId);
-       const seasonNameText = selectedSeasonObj ? `${data.title} - ${selectedSeasonObj.title}` : '';
-       const filteredEpisodes = episodes.filter(ep => ep.seasonId === selectedSeasonId || (ep.seasonId && (ep.seasonId._id === selectedSeasonId || ep.seasonId === selectedSeasonId)));
+       const isShortWeb = data.contentType === 'Short Web Series';
+       let filteredEpisodes = episodes;
+       let seasonNameText = '';
+       
+       if (!isShortWeb) {
+        const selectedSeasonObj = seasons.find(s => s._id === selectedSeasonId);
+        seasonNameText = selectedSeasonObj ? `${data.title} - ${selectedSeasonObj.title}` : '';
+        filteredEpisodes = episodes.filter(ep => ep.seasonId === selectedSeasonId || (ep.seasonId && (ep.seasonId._id === selectedSeasonId || ep.seasonId === selectedSeasonId)));
+       } else {
+        seasonNameText = `${data.title} - Episodes`;
+       }
        
        return (
         <div className="fe-episodes-block-v">
          {seasonNameText && <h2 className="fe-episodes-block-title-v">{seasonNameText}</h2>}
          {filteredEpisodes.length === 0 ? (
-          <div className="no-episodes-v">No episodes available for this season.</div>
+          <div className="no-episodes-v">No episodes available.</div>
          ) : (
           <div className="fe-episodes-grid-v">
            {filteredEpisodes.map((ep, idx) => (
@@ -556,8 +803,8 @@ const FrontendDetails = () => {
      <div className={`fe-related-grid-v ${cleanType === 'sports' ? 'grid-sports-v' : cleanType === 'live' ? 'grid-live-v' : ''}`}>
       {related.map((item) => {
        let cardType = type;
-       if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'episode' || cleanType === 'episodes' || cleanType === 'season' || cleanType === 'seasons') {
-        cardType = 'shows';
+       if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series' || cleanType === 'episode' || cleanType === 'episodes' || cleanType === 'season' || cleanType === 'seasons') {
+        cardType = cleanType === 'short-web-series' ? 'short-web-series' : 'shows';
        }
        const isSports = cleanType === 'sports';
        const isLive = cleanType === 'live';
@@ -577,6 +824,7 @@ const FrontendDetails = () => {
     {/* Fullscreen Cinema Player Overlay */}
     {activeVideoUrl && (() => {
       const filteredEpisodes = episodes.filter(ep => {
+        if (data.contentType === 'Short Web Series') return true;
         if (!ep.seasonId) return false;
         const epSeasonIdStr = typeof ep.seasonId === 'object' ? (ep.seasonId._id || ep.seasonId.id || '').toString() : ep.seasonId.toString();
         const currentSeasonIdStr = selectedSeasonId ? selectedSeasonId.toString() : '';
@@ -592,6 +840,28 @@ const FrontendDetails = () => {
         ? filteredEpisodes[currentEpIndex + 1] 
         : null;
 
+      const getCurrentSubtitles = () => {
+        if (!data) return { active: 'Inactive', list: [] };
+        if (cleanType === 'shows' || cleanType === 'web-series' || cleanType === 'short-web-series') {
+          const currentEp = episodes.find(ep => {
+            const epUrl = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480;
+            return epUrl === activeVideoUrl;
+          });
+          if (currentEp) {
+            return {
+              active: currentEp.subtitlesActive || 'Inactive',
+              list: currentEp.subtitles || []
+            };
+          }
+        }
+        return {
+          active: data.subtitlesActive || 'Inactive',
+          list: data.subtitles || []
+        };
+      };
+
+      const currentSubs = getCurrentSubtitles();
+
       return (
        <div className="fe-cinema-overlay-v">
         <div className="fe-cinema-container-v">
@@ -604,39 +874,53 @@ const FrontendDetails = () => {
          <div className="fe-cinema-content-v">
           {/* Left: Video Player */}
           <div className="fe-cinema-main-v">
-           <video 
+           <VideoPlayer 
             src={activeVideoUrl} 
-            controls 
-            autoPlay 
-            className="fe-cinema-video-v"
-            onEnded={() => {
-              if (nextEpisode) {
-                const nextUrl = nextEpisode.videoFile || nextEpisode.videoUrl || nextEpisode.videoFile1080 || nextEpisode.videoFile720 || nextEpisode.videoFile480;
-                if (nextUrl) {
-                  setActiveVideoUrl(nextUrl);
-                }
-              }
-            }}
+            videoTitle={data?.title}
+            playerSettings={playerSettings}
+            videoId={data?._id}
+             subtitles={currentSubs.list}
+             subtitlesActive={currentSubs.active}
+             onEnded={() => {
+               if (nextEpisode) {
+                 const nextUrl = nextEpisode.videoFile || nextEpisode.videoUrl || nextEpisode.videoFile1080 || nextEpisode.videoFile720 || nextEpisode.videoFile480;
+                 if (nextUrl) {
+                   handlePlayVideo(nextUrl, nextEpisode);
+                 }
+               }
+             }}
+             onTimeUpdate={(currentTime, duration) => {
+               if (duration && duration > 0) {
+                 const timeRemaining = duration - currentTime;
+                 if (timeRemaining <= 5) {
+                   setShowNextBtn(true);
+                 } else {
+                   setShowNextBtn(false);
+                 }
+               }
+             }}
            />
 
            {/* Floating Next Episode Button */}
-           {nextEpisode && (
+           {nextEpisode && showNextBtn && (
             <button 
              className="fe-cinema-next-btn-v"
              onClick={() => {
               const nextUrl = nextEpisode.videoFile || nextEpisode.videoUrl || nextEpisode.videoFile1080 || nextEpisode.videoFile720 || nextEpisode.videoFile480;
-              if (nextUrl) setActiveVideoUrl(nextUrl);
+              if (nextUrl) handlePlayVideo(nextUrl, nextEpisode);
              }}
             >
              <span className="btn-label-v">NEXT EPISODE</span>
-             <span className="btn-title-v">{nextEpisode.title}</span>
-             <ChevronRight size={16} />
+             <div className="btn-title-row-v">
+               <span className="btn-title-v">{nextEpisode.title}</span>
+               <ChevronRight size={16} style={{ flexShrink: 0 }} />
+             </div>
             </button>
            )}
           </div>
 
           {/* Right: Other Episodes Sidebar */}
-          {seasons.length > 0 && (
+          {(seasons.length > 0 || data.contentType === 'Short Web Series') && (
            <div className="fe-cinema-sidebar-v">
             <h3>Other Episodes</h3>
             <div className="fe-cinema-sidebar-list-v">
@@ -649,7 +933,7 @@ const FrontendDetails = () => {
                 className={`fe-sidebar-episode-item-v ${isCurrentlyPlaying ? 'active' : ''}`}
                 onClick={() => {
                  if (epUrl) {
-                  setActiveVideoUrl(epUrl);
+                  handlePlayVideo(epUrl, ep);
                  } else {
                   alert('Video not available for this episode.');
                  }
@@ -730,12 +1014,13 @@ const FrontendDetails = () => {
     .fe-episode-card-v:hover .fe-episode-card-title-v { color: #fff; }
     
     /* Fullscreen Cinema Player styles */
-    .fe-cinema-overlay-v { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #050505; z-index: 999999; display: flex; flex-direction: column; padding: 25px; box-sizing: border-box; }
+    .fe-cinema-overlay-v { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #050505; z-index: 999999; display: flex; flex-direction: column; padding: 25px; box-sizing: border-box; overflow: hidden; }
     .fe-cinema-container-v { display: flex; flex-direction: column; width: 100%; height: 100%; max-width: 1600px; margin: 0 auto; gap: 15px; }
     
     .fe-cinema-header-v { display: flex; align-items: center; justify-content: flex-end; width: 100%; }
-    .fe-cinema-close-v { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.3s; padding: 8px 16px; border-radius: 20px; }
+    .fe-cinema-close-v { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: opacity 0.3s ease, border-color 0.3s, color 0.3s, background-color 0.3s; padding: 8px 16px; border-radius: 20px; }
     .fe-cinema-close-v:hover { color: #b3d332; border-color: #b3d332; background: rgba(179,211,50,0.1); }
+    .fe-cinema-container-v:has(.controls-hidden) .fe-cinema-close-v { opacity: 0; pointer-events: none; }
     
     .fe-cinema-content-v { display: flex; gap: 30px; width: 100%; flex: 1; min-height: 0; }
     
@@ -746,8 +1031,9 @@ const FrontendDetails = () => {
     /* Floating Next Episode Button Styles */
     .fe-cinema-next-btn-v {
       position: absolute;
-      bottom: 40px;
+      top: 50%;
       right: 40px;
+      transform: translateY(-50%);
       background: #b3d332;
       border: none;
       border-radius: 8px;
@@ -765,7 +1051,7 @@ const FrontendDetails = () => {
       text-align: left;
     }
     .fe-cinema-next-btn-v:hover {
-      transform: scale(1.05) translateY(-2px);
+      transform: translateY(-50%) scale(1.05);
       background: #fff;
       box-shadow: 0 15px 40px rgba(255,255,255,0.3);
     }
@@ -783,6 +1069,12 @@ const FrontendDetails = () => {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .fe-cinema-next-btn-v .btn-title-row-v {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
     }
     
     /* Right Sidebar for Other Episodes */
@@ -937,6 +1229,51 @@ const FrontendDetails = () => {
      }
      .fe-related-card-v.related-live-v .related-poster-v img {
       padding: 8px !important;
+     }
+
+     /* Cinema Overlay Mobile Responsiveness */
+     .fe-cinema-overlay-v {
+      padding: 10px;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+     }
+     .fe-cinema-container-v {
+      gap: 10px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+     }
+     .fe-cinema-content-v {
+      flex-direction: column;
+      gap: 15px;
+      flex: 1;
+      min-height: 0;
+     }
+     .fe-cinema-main-v {
+      flex-shrink: 0;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16/9;
+     }
+     .fe-cinema-sidebar-v {
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+     }
+     .fe-cinema-next-btn-v {
+      right: 15px;
+      padding: 8px 16px;
+     }
+     .fe-cinema-next-btn-v .btn-title-v {
+      font-size: 0.8rem;
+      max-width: 100px;
      }
     }
 

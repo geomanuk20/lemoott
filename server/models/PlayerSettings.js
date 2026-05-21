@@ -8,7 +8,9 @@ const PlayerSettingsSchema = new mongoose.Schema({
   watermark: { type: String, default: 'YES' },
   watermarkLogo: { type: String, default: 'upload/player_logo.png' },
   watermarkPosition: { type: String, default: 'Top Right' },
-  watermarkUrl: { type: String, default: '#' }
+  watermarkUrl: { type: String, default: '#' },
+  theoplayerLicense: { type: String, default: '' },
+  theoplayerLibrary: { type: String, default: 'https://cdn.jsdelivr.net/npm/theoplayer@6.0.0/' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('PlayerSettings', PlayerSettingsSchema);

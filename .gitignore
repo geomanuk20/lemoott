@@ -25,3 +25,8 @@ yarn-error.log*
 
 # Model scratch folder
 scratch/
+
+# Debug files
+server/debug_key.pem
+server/debug_log.txt
+server/test_decode.js

@@ -60,6 +60,17 @@ const Sidebar = () => {
     { name: 'Language', icon: <Globe size={20} />, path: '/admin/language' },
     { name: 'Genres', icon: <Tag size={20} />, path: '/admin/genres' },
     { name: 'Movies', icon: <Film size={20} />, path: '/admin/movies' },
+    { name: 'Short Film', icon: <PlayCircle size={20} />, path: '/admin/short-films' },
+    { 
+      name: 'Short Web Series', 
+      icon: <Tv size={20} />, 
+      path: '/admin/short-web-series', 
+      hasSub: true,
+      subItems: [
+        { name: 'Series', icon: <Image size={16} />, path: '/admin/short-web-series' },
+        { name: 'Episodes', icon: <List size={16} />, path: '/admin/short-web-series/episodes' },
+      ]
+    },
     { name: 'New Release', icon: <PlayCircle size={20} />, path: '/admin/new-release' },
     { 
       name: 'TV Shows', 
@@ -240,7 +251,7 @@ const Sidebar = () => {
                   <span>{item.name}</span>
                   <ChevronRight size={14} className="chevron" />
                 </div>
-                {openSub === item.name && item.subItems && (
+                {(openSub === item.name || location.pathname.startsWith(item.path)) && item.subItems && (
                   <div className="sub-menu">
                     {item.subItems.map((sub, idx) => (
                       <NavLink 

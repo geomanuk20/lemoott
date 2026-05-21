@@ -17,6 +17,8 @@ import {
   HelpCircle,
   Menu,
   X,
+  AlertCircle,
+  Check,
   Loader2,
   Globe,
   MonitorPlay,
@@ -39,6 +41,7 @@ const Home = () => {
   const [channels, setChannels] = useState([]);
   const [sportsChannels, setSportsChannels] = useState([]);
   const [assets, setAssets] = useState([]);
+  const [homeSections, setHomeSections] = useState([]);
   const sportsRef = useRef(null);
   const channelsRef = useRef(null);
   const [sportsScroll, setSportsScroll] = useState({ canLeft: false, canRight: false });
@@ -48,6 +51,8 @@ const Home = () => {
   const [dragStart, setDragStart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [subEmail, setSubEmail] = useState('');
+  const [subMessage, setSubMessage] = useState({ text: '', type: '' });
   const [headerVisible, setHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -57,6 +62,15 @@ const Home = () => {
   const [selectedContent, setSelectedContent] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [sportsCategories, setSportsCategories] = useState([]);
+
+  useEffect(() => {
+    if (subMessage.text) {
+      const timer = setTimeout(() => {
+        setSubMessage({ text: '', type: '' });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [subMessage]);
 
   useEffect(() => {
     // Load from cache first for instant rendering
@@ -74,6 +88,7 @@ const Home = () => {
         setAssets(data.assets || []);
         setExperiences(data.experiences || []);
         setSportsCategories(data.sportsCategories || []);
+        setHomeSections(data.homeSections || []);
         
         setSportsChannels((data.channels || []).filter(c => {
           const isSport = c.category?.name?.toLowerCase().includes('sports') || c.channelCategory?.toLowerCase().includes('sports');
@@ -106,6 +121,7 @@ const Home = () => {
         setShows(data.shows || []);
         setSports(data.sports || []);
         setChannels(data.channels || []);
+        setHomeSections(data.homeSections || []);
         
         setSportsChannels((data.channels || []).filter(c => {
           const isSport = c.category?.name?.toLowerCase().includes('sports') || c.channelCategory?.toLowerCase().includes('sports');
@@ -329,378 +345,629 @@ const Home = () => {
     <>
 
 
-      {/* Top Category Rows (Movies) */}
-      {categories.slice(0, 2).map((cat, i) => (
-       <div key={i} className={`fe-row-v ${cat.type === 'sports' ? 'fe-landscape-row-v' : 'fe-featured-row-v'}`}>
-        <div className="row-header-v">
-         <h2 className="row-title-v">{cat.title}</h2>
-         <Link to={`/view-all/${cat.type}/${cat.title}`} className="row-more-v">
-          VIEW ALL <ChevronRight size={14} />
-         </Link>
-        </div>
-        
-        {cat.type === 'sports' ? (
-         <div className="fe-landscape-list-container-v">
-          <div className="fe-landscape-list-v">
-           {cat.movies.map((item) => (
-            <div key={item._id} className="fe-landscape-card-v outside-content-v" onClick={() => handleOpenModal(item, 'sports')}>
-             <div className="fe-landscape-img-wrapper-v">
-              <img src={formatImageUrl(item, 'landscape')} alt={item.title} />
-              {item.access === 'Paid' && (
-               <div className="fe-premium-indicator-v">
-                <Crown size={12} fill="currentColor" />
-               </div>
-              )}
-              {item.videoQuality && (
-               <div className="fe-quality-badge-v">
-                {(() => {
-                 const q = item.videoQuality || 'HD';
-                 const qLower = q.toLowerCase();
-                 if (qLower.includes('8k')) return '8K';
-                 if (qLower.includes('4k')) return '4K';
-                 if (qLower.includes('ultra')) return 'ULTRA';
-                 if (qLower.includes('full')) return 'FHD';
-                 if (qLower.includes('hdr')) return 'HDR';
-                 if (qLower.includes('hd')) return 'HD';
-                 return q.split(' ')[0].toUpperCase();
-                })()}
-               </div>
-              )}
-             </div>
-             <div className="fe-sports-card-info-under-v">
-              <div className="card-title-under-v">{item.title}</div>
-              {item.category && (
-               <div className="card-cat-under-v">{typeof item.category === 'object' ? item.category.name : 'Sports'}</div>
-              )}
-             </div>
-            </div>
-           ))}
-          </div>
-         </div>
-        ) : (
-         <div className="fe-movie-list-v">
-          {cat.movies.map((m) => (
-           <div 
-            key={m._id} 
-            className="fe-movie-card-v"
-            onClick={() => handleOpenModal(m, cat.type === 'new-releases' ? 'new-releases' : 'movie')}
-           >
-            {formatImageUrl(m, 'poster') && (
-             <img src={formatImageUrl(m, 'poster')} alt={m.title} />
-            )}
-            {m.access === 'Paid' && (
-             <div className="fe-premium-indicator-v">
-              <Crown size={12} fill="currentColor" />
-             </div>
-            )}
-            <div className="fe-card-hover-v">
-             <div className="fe-hover-content-v">
-              <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
-             <div className="fe-card-badges-v">
-              {(() => {
-               const quality = m.videoQuality || '4K Ultra HD';
-               const parts = quality.split(' ');
-               const prefix = parts[0] || '4K';
-               const suffix = parts.slice(1).join(' ') || 'Ultra HD';
-               return (
-                <div className="fe-premium-badge-v">
-                 <span className="badge-prefix-v">{prefix}</span>
-                 <span className="badge-suffix-v">{suffix}</span>
-                </div>
-               );
-              })()}
-              {(() => {
-               const ratingVal = parseFloat(m.imdbRating || '4.8');
-               const percentage = (ratingVal / 10) * 100;
-               return (
-                <div 
-                 className="fe-badge-rating-v" 
-                 style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
-                >
-                 <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
-                </div>
-               );
-              })()}
-             </div>
-             <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'Thriller'}</div>
-             <h3 className="fe-card-info-title-v">{m.title}</h3>
-             <div className="fe-card-meta-v">
-              <span>{m.language || 'Malayalam'}</span>
-             </div>
-            </div>
-           </div>
-          </div>
-         ))}
-        </div>
-       )}
-      </div>
-     ))}
+      {/* Dynamic Homepage Sections */}
+      {homeSections.map((section, idx) => {
+        let contentEl = null;
 
-      {/* Experience Section - Only show if assets exist */}
-      {assets.length > 0 && (
-       <section className="fe-experience-section-v">
-        <div className="fe-experience-container-v">
-         <div className="fe-experience-visual-v">
-          <div className="visual-collage-v">
-           {assets[0]?.url && (
-            <img 
-             src={assets[0]?.url} 
-             alt="Experience 1" className="collage-img-1" 
-            />
-           )}
-           {assets[1]?.url && (
-            <img 
-             src={assets[1]?.url} 
-             alt="Experience 2" className="collage-img-2" 
-            />
-           )}
-           {assets[2]?.url && (
-            <img 
-             src={assets[2]?.url} 
-             alt="Experience 3" className="collage-img-3" 
-            />
-           )}
+        if (section.sectionType === 'Movie') {
+          const sectionMovies = movies.slice(0, section.limit || 15);
+          if (sectionMovies.length > 0) {
+            contentEl = (
+              <div key={section._id} className="fe-row-v fe-featured-row-v">
+                <div className="row-header-v">
+                  <h2 className="row-title-v">{section.title}</h2>
+                  <Link to="/view-all/movies/Movies" className="row-more-v">
+                    VIEW ALL <ChevronRight size={14} />
+                  </Link>
+                </div>
+                <div className="fe-movie-list-v">
+                  {sectionMovies.map((m) => (
+                    <div 
+                      key={m._id} 
+                      className="fe-movie-card-v"
+                      onClick={() => handleOpenModal(m, 'movie')}
+                    >
+                      {formatImageUrl(m, 'poster') && (
+                        <img src={formatImageUrl(m, 'poster')} alt={m.title} />
+                      )}
+                      {m.access === 'Paid' && (
+                        <div className="fe-premium-indicator-v">
+                          <Crown size={12} fill="currentColor" />
+                        </div>
+                      )}
+                      <div className="fe-card-hover-v">
+                        <div className="fe-hover-content-v">
+                          <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                          <div className="fe-card-badges-v">
+                            {(() => {
+                              const quality = m.videoQuality || '4K Ultra HD';
+                              const parts = quality.split(' ');
+                              const prefix = parts[0] || '4K';
+                              const suffix = parts.slice(1).join(' ') || 'Ultra HD';
+                              return (
+                                <div className="fe-premium-badge-v">
+                                  <span className="badge-prefix-v">{prefix}</span>
+                                  <span className="badge-suffix-v">{suffix}</span>
+                                </div>
+                              );
+                            })()}
+                            {(() => {
+                              const ratingVal = parseFloat(m.imdbRating || '4.8');
+                              const percentage = (ratingVal / 10) * 100;
+                              return (
+                                <div 
+                                  className="fe-badge-rating-v" 
+                                  style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
+                                >
+                                  <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'Thriller'}</div>
+                          <h3 className="fe-card-info-title-v">{m.title}</h3>
+                          <div className="fe-card-meta-v">
+                            <span>{m.language || 'Malayalam'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+        } else if (section.sectionType === 'Shows') {
+          const sectionShows = shows.slice(0, section.limit || 6);
+          if (sectionShows.length > 0) {
+            contentEl = (
+              <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
+                <div className="watch-online-header-v">
+                  <div style={{ textAlign: 'left' }}>
+                    <span className="watch-online-tag-v">ONLINE STREAMING</span>
+                    <h2 className="watch-online-title-v">{section.title}</h2>
+                  </div>
+                  <Link to="/shows" className="row-more-v" style={{ marginBottom: '10px' }}>
+                    VIEW ALL <ChevronRight size={14} />
+                  </Link>
+                </div>
+                <div className="watch-online-grid-v">
+                  {sectionShows.map((show) => (
+                    <div 
+                      key={show._id} 
+                      className="online-movie-card-v"
+                      onClick={() => handleOpenModal(show, 'shows')}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="online-movie-poster-v">
+                        {formatImageUrl(show, 'poster') && (
+                          <img src={formatImageUrl(show, 'poster')} alt={show.title} />
+                        )}
+                        {show.seriesAccess === 'Paid' && (
+                          <div className="fe-premium-indicator-v">
+                            <Crown size={12} fill="currentColor" />
+                          </div>
+                        )}
+                        <div className="online-card-overlay-v">
+                          {(() => {
+                            const quality = show.videoQuality || '4K Ultra HD';
+                            const parts = quality.split(' ');
+                            const prefix = parts[0] || '4K';
+                            const suffix = parts.slice(1).join(' ') || 'Ultra HD';
+                            return (
+                              <div className="fe-premium-badge-v">
+                                <span className="badge-prefix-v">{prefix}</span>
+                                <span className="badge-suffix-v">{suffix}</span>
+                              </div>
+                            );
+                          })()}
+                          {(() => {
+                            const ratingVal = parseFloat(show.imdbRating || show.rating || '4.8');
+                            const percentage = (ratingVal / 10) * 100;
+                            return (
+                              <div 
+                                className="online-rating-v" 
+                                style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
+                              >
+                                <div className="rating-inner-v">{show.imdbRating || show.rating || '4.8'}</div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      <div className="online-movie-meta-v">
+                        <div className="meta-top-v">
+                          <span className="meta-type-v">{show.contentRating || 'TV-G'}</span>
+                          <span className="meta-year-v">{show.releaseYear || 2024}</span>
+                        </div>
+                        <div className="meta-genre-v">{Array.isArray(show.genres) ? show.genres[0] : (show.genre || 'Action')}</div>
+                        <h3 className="meta-title-v">{show.title}</h3>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          }
+        } else if (section.sectionType === 'Sports') {
+          const sectionSports = sports.slice(0, section.limit || 15);
+          if (sectionSports.length > 0) {
+            contentEl = (
+              <div key={section._id} className="fe-row-v fe-landscape-row-v">
+                <div className="row-header-v">
+                  <h2 className="row-title-v">{section.title}</h2>
+                  <Link to="/view-all/sports/Sports" className="row-more-v">
+                    VIEW ALL <ChevronRight size={14} />
+                  </Link>
+                </div>
+                <div className="fe-landscape-list-container-v">
+                  <div className="fe-landscape-list-v">
+                    {sectionSports.map((item) => (
+                      <div key={item._id} className="fe-landscape-card-v outside-content-v" onClick={() => handleOpenModal(item, 'sports')}>
+                        <div className="fe-landscape-img-wrapper-v">
+                          <img src={formatImageUrl(item, 'landscape')} alt={item.title} />
+                          {item.access === 'Paid' && (
+                            <div className="fe-premium-indicator-v">
+                              <Crown size={12} fill="currentColor" />
+                            </div>
+                          )}
+                          {item.videoQuality && (
+                            <div className="fe-quality-badge-v">
+                              {(() => {
+                                const q = item.videoQuality || 'HD';
+                                const qLower = q.toLowerCase();
+                                if (qLower.includes('8k')) return '8K';
+                                if (qLower.includes('4k')) return '4K';
+                                if (qLower.includes('ultra')) return 'ULTRA';
+                                if (qLower.includes('full')) return 'FHD';
+                                if (qLower.includes('hdr')) return 'HDR';
+                                if (qLower.includes('hd')) return 'HD';
+                                return q.split(' ')[0].toUpperCase();
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="fe-sports-card-info-under-v">
+                          <div className="card-title-under-v">{item.title}</div>
+                          {item.category && (
+                            <div className="card-cat-under-v">{typeof item.category === 'object' ? item.category.name : 'Sports'}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+        } else if (section.sectionType === 'Live TV') {
+          const sectionChannels = channels.slice(0, section.limit || 50);
+          if (sectionChannels.length > 0) {
+            contentEl = (
+              <section key={section._id} className="fe-row-v fe-landscape-row-v">
+                <div className="row-header-v">
+                  <h2 className="row-title-v">{section.title}</h2>
+                  <Link to="/view-all/live/Live TV" className="row-more-v">
+                    VIEW ALL <ChevronRight size={14} />
+                  </Link>
+                </div>
+                <div className="fe-landscape-list-container-v">
+                  {channelsScroll.canLeft && (
+                    <button className="nav-btn-v prev-v" onClick={() => channelsRef.current.scrollBy({left: -600, behavior: 'smooth'})}><ChevronRight size={20} style={{transform: 'rotate(180deg)'}} /></button>
+                  )}
+                  <div 
+                    className="fe-landscape-list-v" 
+                    ref={channelsRef}
+                    onScroll={() => checkScroll(channelsRef, setChannelsScroll)}
+                  >
+                    {sectionChannels.map((item) => (
+                      <div key={item._id} className="fe-channel-card-v" onClick={() => handleOpenModal(item, 'live')}>
+                        <div className="channel-logo-wrapper-v">
+                          <img src={formatImageUrl(item, 'poster')} alt={item.name} />
+                          {(item.tvAccess === 'Paid' || item.access === 'Paid') && (
+                            <div className="fe-premium-indicator-v">
+                              <Crown size={12} fill="currentColor" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="channel-info-under-v">
+                          <div className="channel-title-v">{item.name}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {channelsScroll.canRight && (
+                    <button className="nav-btn-v next-v" onClick={() => channelsRef.current.scrollBy({left: 600, behavior: 'smooth'})}><ChevronRight size={20} /></button>
+                  )}
+                </div>
+              </section>
+            );
+          }
+        } else if (section.sectionType === 'New Release') {
+          const sectionNewReleases = newReleases.slice(0, section.limit || 15);
+          if (sectionNewReleases.length > 0) {
+            contentEl = (
+              <div key={section._id} className="fe-row-v fe-featured-row-v">
+                <div className="row-header-v">
+                  <h2 className="row-title-v">{section.title}</h2>
+                  <Link to="/view-all/new-releases/New Releases" className="row-more-v">
+                    VIEW ALL <ChevronRight size={14} />
+                  </Link>
+                </div>
+                <div className="fe-movie-list-v">
+                  {sectionNewReleases.map((m) => (
+                    <div 
+                      key={m._id} 
+                      className="fe-movie-card-v"
+                      onClick={() => handleOpenModal(m, 'new-releases')}
+                    >
+                      {formatImageUrl(m, 'poster') && (
+                        <img src={formatImageUrl(m, 'poster')} alt={m.title} />
+                      )}
+                      {m.access === 'Paid' && (
+                        <div className="fe-premium-indicator-v">
+                          <Crown size={12} fill="currentColor" />
+                        </div>
+                      )}
+                      <div className="fe-card-hover-v">
+                        <div className="fe-hover-content-v">
+                          <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                          <div className="fe-card-badges-v">
+                            {(() => {
+                              const quality = m.videoQuality || '4K Ultra HD';
+                              const parts = quality.split(' ');
+                              const prefix = parts[0] || '4K';
+                              const suffix = parts.slice(1).join(' ') || 'Ultra HD';
+                              return (
+                                <div className="fe-premium-badge-v">
+                                  <span className="badge-prefix-v">{prefix}</span>
+                                  <span className="badge-suffix-v">{suffix}</span>
+                                </div>
+                              );
+                            })()}
+                            {(() => {
+                              const ratingVal = parseFloat(m.imdbRating || '4.8');
+                              const percentage = (ratingVal / 10) * 100;
+                              return (
+                                <div 
+                                  className="fe-badge-rating-v" 
+                                  style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
+                                >
+                                  <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'New Release'}</div>
+                          <h3 className="fe-card-info-title-v">{m.title}</h3>
+                          <div className="fe-card-meta-v">
+                            <span>{m.language || 'Malayalam'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+        } else if (section.sectionType === 'Short Film') {
+          const shortFilms = movies.filter(m => m.contentType === 'Short Film').slice(0, section.limit || 15);
+          if (shortFilms.length > 0) {
+            contentEl = (
+              <div key={section._id} className="fe-row-v fe-featured-row-v">
+                <div className="row-header-v">
+                  <h2 className="row-title-v">{section.title}</h2>
+                  <Link to="/view-all/short-film/Short Films" className="row-more-v">
+                    VIEW ALL <ChevronRight size={14} />
+                  </Link>
+                </div>
+                <div className="fe-movie-list-v">
+                  {shortFilms.map((m) => (
+                    <div 
+                      key={m._id} 
+                      className="fe-movie-card-v"
+                      onClick={() => handleOpenModal(m, 'short-film')}
+                    >
+                      {formatImageUrl(m, 'poster') && (
+                        <img src={formatImageUrl(m, 'poster')} alt={m.title} />
+                      )}
+                      {m.access === 'Paid' && (
+                        <div className="fe-premium-indicator-v">
+                          <Crown size={12} fill="currentColor" />
+                        </div>
+                      )}
+                      <div className="fe-card-hover-v">
+                        <div className="fe-hover-content-v">
+                          <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                          <div className="fe-card-badges-v">
+                            {(() => {
+                              const quality = m.videoQuality || '4K Ultra HD';
+                              const parts = quality.split(' ');
+                              const prefix = parts[0] || '4K';
+                              const suffix = parts.slice(1).join(' ') || 'Ultra HD';
+                              return (
+                                <div className="fe-premium-badge-v">
+                                  <span className="badge-prefix-v">{prefix}</span>
+                                  <span className="badge-suffix-v">{suffix}</span>
+                                </div>
+                              );
+                            })()}
+                            {(() => {
+                              const ratingVal = parseFloat(m.imdbRating || '4.8');
+                              const percentage = (ratingVal / 10) * 100;
+                              return (
+                                <div 
+                                  className="fe-badge-rating-v" 
+                                  style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
+                                >
+                                  <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'Short Film'}</div>
+                          <h3 className="fe-card-info-title-v">{m.title}</h3>
+                          <div className="fe-card-meta-v">
+                            <span>{m.language || 'Malayalam'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+        } else if (section.sectionType === 'Short Web Series') {
+          const shortWebSeries = shows.filter(s => s.contentType === 'Short Web Series').slice(0, section.limit || 6);
+          if (shortWebSeries.length > 0) {
+            contentEl = (
+              <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
+                <div className="watch-online-header-v">
+                  <div style={{ textAlign: 'left' }}>
+                    <span className="watch-online-tag-v">SHORT WEB SERIES</span>
+                    <h2 className="watch-online-title-v">{section.title}</h2>
+                  </div>
+                  <Link to="/web-series" className="row-more-v" style={{ marginBottom: '10px' }}>
+                    VIEW ALL <ChevronRight size={14} />
+                  </Link>
+                </div>
+                <div className="watch-online-grid-v">
+                  {shortWebSeries.map((show) => (
+                    <div 
+                      key={show._id} 
+                      className="online-movie-card-v"
+                      onClick={() => handleOpenModal(show, 'short-web-series')}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="online-movie-poster-v">
+                        {formatImageUrl(show, 'poster') && (
+                          <img src={formatImageUrl(show, 'poster')} alt={show.title} />
+                        )}
+                        {show.seriesAccess === 'Paid' && (
+                          <div className="fe-premium-indicator-v">
+                            <Crown size={12} fill="currentColor" />
+                          </div>
+                        )}
+                        <div className="online-card-overlay-v">
+                          {(() => {
+                            const quality = show.videoQuality || '4K Ultra HD';
+                            const parts = quality.split(' ');
+                            const prefix = parts[0] || '4K';
+                            const suffix = parts.slice(1).join(' ') || 'Ultra HD';
+                            return (
+                              <div className="fe-premium-badge-v">
+                                <span className="badge-prefix-v">{prefix}</span>
+                                <span className="badge-suffix-v">{suffix}</span>
+                              </div>
+                            );
+                          })()}
+                          {(() => {
+                            const ratingVal = parseFloat(show.imdbRating || show.rating || '4.8');
+                            const percentage = (ratingVal / 10) * 100;
+                            return (
+                              <div 
+                                className="online-rating-v" 
+                                style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
+                              >
+                                <div className="rating-inner-v">{show.imdbRating || show.rating || '4.8'}</div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      <div className="online-movie-meta-v">
+                        <div className="meta-top-v">
+                          <span className="meta-type-v">{show.contentRating || 'TV-G'}</span>
+                          <span className="meta-year-v">{show.releaseYear || 2024}</span>
+                        </div>
+                        <div className="meta-genre-v">{Array.isArray(show.genres) ? show.genres[0] : (show.genre || 'Web Series')}</div>
+                        <h3 className="meta-title-v">{show.title}</h3>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          }
+        }
+
+        // Render Experience Promos after the 2nd row for pleasant pacing
+        if (idx === 1 && assets.length > 0) {
+          return (
+            <React.Fragment key={section._id || idx}>
+              {contentEl}
+              <section className="fe-experience-section-v">
+                <div className="fe-experience-container-v">
+                  <div className="fe-experience-visual-v">
+                    <div className="visual-collage-v">
+                      {assets[0]?.url && (
+                        <img 
+                          src={assets[0]?.url} 
+                          alt="Experience 1" className="collage-img-1" 
+                        />
+                      )}
+                      {assets[1]?.url && (
+                        <img 
+                          src={assets[1]?.url} 
+                          alt="Experience 2" className="collage-img-2" 
+                        />
+                      )}
+                      {assets[2]?.url && (
+                        <img 
+                          src={assets[2]?.url} 
+                          alt="Experience 3" className="collage-img-3" 
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="fe-experience-info-v">
+                    <h2 className="exp-main-title-v">Best pick for hassle-free <span>streaming</span> experience.</h2>
+                    {experiences.length > 0 && experiences.map((exp) => {
+                      const IconComponent = {
+                        Globe: Globe,
+                        MonitorPlay: MonitorPlay,
+                        Shield: Shield,
+                        Zap: Globe,
+                        Film: MonitorPlay,
+                        PlayCircle: MonitorPlay
+                      }[exp.icon] || Globe;
+
+                      return (
+                        <div key={exp._id} className="exp-feature-v">
+                          <div className="exp-feature-icon-v"><IconComponent size={32} /></div>
+                          <div className="exp-feature-text-v">
+                            <h3>{exp.title}</h3>
+                            <p>{exp.description}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            </React.Fragment>
+          );
+        }
+
+        return contentEl;
+      })}
+
+      {/* Fallback if homeSections didn't load or is empty, render experience block alone */}
+      {homeSections.length < 2 && assets.length > 0 && (
+        <section className="fe-experience-section-v">
+          <div className="fe-experience-container-v">
+            <div className="fe-experience-visual-v">
+              <div className="visual-collage-v">
+                {assets[0]?.url && (
+                  <img 
+                    src={assets[0]?.url} 
+                    alt="Experience 1" className="collage-img-1" 
+                  />
+                )}
+                {assets[1]?.url && (
+                  <img 
+                    src={assets[1]?.url} 
+                    alt="Experience 2" className="collage-img-2" 
+                  />
+                )}
+                {assets[2]?.url && (
+                  <img 
+                    src={assets[2]?.url} 
+                    alt="Experience 3" className="collage-img-3" 
+                  />
+                )}
+              </div>
+            </div>
+            <div className="fe-experience-info-v">
+              <h2 className="exp-main-title-v">Best pick for hassle-free <span>streaming</span> experience.</h2>
+              {experiences.length > 0 && experiences.map((exp) => {
+                const IconComponent = {
+                  Globe: Globe,
+                  MonitorPlay: MonitorPlay,
+                  Shield: Shield,
+                  Zap: Globe,
+                  Film: MonitorPlay,
+                  PlayCircle: MonitorPlay
+                }[exp.icon] || Globe;
+
+                return (
+                  <div key={exp._id} className="exp-feature-v">
+                    <div className="exp-feature-icon-v"><IconComponent size={32} /></div>
+                    <div className="exp-feature-text-v">
+                      <h3>{exp.title}</h3>
+                      <p>{exp.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-         </div>
-         <div className="fe-experience-info-v">
-          <h2 className="exp-main-title-v">Best pick for hassle-free <span>streaming</span> experience.</h2>
+        </section>
+      )}
+     </>
+     
+     {/* Subscription CTA Section */}
+     <div className="fe-subscription-cta-v">
+      <div className="fe-cta-content-v">
+       <h2>Never Miss the Action</h2>
+       <p>Subscribe to our premium plan for exclusive live sports, movies, and TV shows.</p>
+       <div className="fe-cta-input-group-v">
+        <input 
+         type="email" 
+         placeholder="Enter your email address" 
+         className="fe-cta-email-v" 
+         value={subEmail}
+         onChange={(e) => {
+          setSubEmail(e.target.value);
+          setSubMessage({ text: '', type: '' }); // clear error on type
+         }}
+        />
+        <button 
+         className="fe-cta-btn-v" 
+         onClick={() => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!subEmail.trim()) {
+           setSubMessage({ text: 'Please enter your email address first.', type: 'error' });
+           return;
+          }
+          if (!emailRegex.test(subEmail)) {
+           setSubMessage({ text: 'Please enter a valid email format.', type: 'error' });
+           return;
+          }
           
-          {experiences.length > 0 && experiences.map((exp) => {
-           const IconComponent = {
-            Globe: Globe,
-            MonitorPlay: MonitorPlay,
-            Shield: Shield,
-            Zap: Globe, // Fallback
-            Film: MonitorPlay,
-            PlayCircle: MonitorPlay
-           }[exp.icon] || Globe;
-
-           return (
-            <div key={exp._id} className="exp-feature-v">
-             <div className="exp-feature-icon-v"><IconComponent size={32} /></div>
-             <div className="exp-feature-text-v">
-              <h3>{exp.title}</h3>
-              <p>{exp.description}</p>
-             </div>
-            </div>
-           );
-          })}
-         </div>
-        </div>
-       </section>
-      )}
-
-      {/* Watch Shows Online Section */}
-      <section className="fe-watch-online-v">
-       <div className="watch-online-header-v">
-        <span className="watch-online-tag-v">ONLINE STREAMING</span>
-         <h2 className="watch-online-title-v">Watch Shows Online</h2>
+          const user = JSON.parse(localStorage.getItem('user') || 'null');
+          const token = localStorage.getItem('token');
+          if (user && token) {
+           navigate('/subscription');
+          } else {
+           navigate('/login', { state: { email: subEmail } });
+          }
+         }}
+        >
+         Subscribe Now
+        </button>
        </div>
-       <div className="watch-online-grid-v">
-        {shows.slice(0, 6).map((show) => (
-         <div 
-          key={show._id} 
-          className="online-movie-card-v"
-          onClick={() => handleOpenModal(show, 'shows')}
-          style={{ cursor: 'pointer' }}
-         >
-          <div className="online-movie-poster-v">
-           {formatImageUrl(show, 'poster') && (
-            <img src={formatImageUrl(show, 'poster')} alt={show.title} />
+        {subMessage.text && (
+         <div className={`lemo-toast-notification-v ${subMessage.type}`}>
+          <div className="lemo-toast-accent-v" />
+          <div className="lemo-toast-body-v">
+           {subMessage.type === 'error' ? (
+            <AlertCircle size={18} className="lemo-toast-icon-v error" />
+           ) : (
+            <Check size={18} className="lemo-toast-icon-v success" />
            )}
-           {show.seriesAccess === 'Paid' && (
-            <div className="fe-premium-indicator-v">
-             <Crown size={12} fill="currentColor" />
-            </div>
-           )}
-           <div className="online-card-overlay-v">
-            {(() => {
-             const quality = show.videoQuality || '4K Ultra HD';
-             const parts = quality.split(' ');
-             const prefix = parts[0] || '4K';
-             const suffix = parts.slice(1).join(' ') || 'Ultra HD';
-             return (
-              <div className="fe-premium-badge-v">
-               <span className="badge-prefix-v">{prefix}</span>
-               <span className="badge-suffix-v">{suffix}</span>
-              </div>
-             );
-            })()}
-            {(() => {
-             const ratingVal = parseFloat(show.imdbRating || show.rating || '4.8');
-             const percentage = (ratingVal / 10) * 100;
-             return (
-              <div 
-               className="online-rating-v" 
-               style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
-              >
-               <div className="rating-inner-v">{show.imdbRating || show.rating || '4.8'}</div>
-              </div>
-             );
-            })()}
-           </div>
+           <span>{subMessage.text}</span>
           </div>
-          <div className="online-movie-meta-v">
-           <div className="meta-top-v">
-            <span className="meta-type-v">{show.contentRating || 'TV-G'}</span>
-            <span className="meta-year-v">{show.releaseYear || 2024}</span>
-           </div>
-           <div className="meta-genre-v">{Array.isArray(show.genres) ? show.genres[0] : (show.genre || 'Action')}</div>
-           <h3 className="meta-title-v">{show.title}</h3>
-          </div>
-         </div>
-        ))}
-       </div>
-      </section>
-
-      {/* Live TV Section */}
-      {channels.length > 0 && (
-       <section className="fe-row-v fe-landscape-row-v">
-        <div className="row-header-v">
-         <h2 className="row-title-v">Live TV</h2>
-         <Link to="/view-all/live/Live TV" className="row-more-v">
-          VIEW ALL <ChevronRight size={14} />
-         </Link>
-        </div>
-        <div className="fe-landscape-list-container-v">
-         {channelsScroll.canLeft && (
-          <button className="nav-btn-v prev-v" onClick={() => channelsRef.current.scrollBy({left: -600, behavior: 'smooth'})}><ChevronRight size={20} style={{transform: 'rotate(180deg)'}} /></button>
-         )}
-         <div 
-          className="fe-landscape-list-v" 
-          ref={channelsRef}
-          onScroll={() => checkScroll(channelsRef, setChannelsScroll)}
-         >
-           {channels.map((item) => (
-            <div key={item._id} className="fe-channel-card-v" onClick={() => handleOpenModal(item, 'live')}>
-             <div className="channel-logo-wrapper-v">
-              <img src={formatImageUrl(item, 'poster')} alt={item.name} />
-              {(item.tvAccess === 'Paid' || item.access === 'Paid') && (
-               <div className="fe-premium-indicator-v">
-                <Crown size={12} fill="currentColor" />
-               </div>
-              )}
-             </div>
-             <div className="channel-info-under-v">
-              <div className="channel-title-v">{item.name}</div>
-             </div>
-            </div>
-           ))}</div>
-         {channelsScroll.canRight && (
-          <button className="nav-btn-v next-v" onClick={() => channelsRef.current.scrollBy({left: 600, behavior: 'smooth'})}><ChevronRight size={20} /></button>
-         )}
-        </div>
-       </section>
-      )}
-
-
-      {/* Remaining Category Rows (Sports, etc) */}
-      {categories.slice(2).map((cat, i) => (
-       <div key={i + 2} className={`fe-row-v ${cat.type === 'sports' ? 'fe-landscape-row-v' : 'fe-featured-row-v'}`}>
-        <div className="row-header-v">
-         <h2 className="row-title-v">{cat.title}</h2>
-         <Link to={`/view-all/${cat.type}/${cat.title}`} className="row-more-v">
-          VIEW ALL <ChevronRight size={14} />
-         </Link>
-        </div>
-        
-        {cat.type === 'sports' ? (
-         <div className="fe-landscape-list-container-v">
-          <div className="fe-landscape-list-v">
-           {cat.movies.map((item) => (
-            <div key={item._id} className="fe-landscape-card-v outside-content-v" onClick={() => handleOpenModal(item, 'sports')}>
-             <div className="fe-landscape-img-wrapper-v">
-              <img src={formatImageUrl(item, 'landscape')} alt={item.title} />
-              {item.access === 'Paid' && (
-               <div className="fe-premium-indicator-v">
-                <Crown size={12} fill="currentColor" />
-               </div>
-              )}
-              {item.videoQuality && (
-               <div className="fe-quality-badge-v">
-                {(() => {
-                 const q = item.videoQuality || 'HD';
-                 const qLower = q.toLowerCase();
-                 if (qLower.includes('8k')) return '8K';
-                 if (qLower.includes('4k')) return '4K';
-                 if (qLower.includes('ultra')) return 'ULTRA';
-                 if (qLower.includes('full')) return 'FHD';
-                 if (qLower.includes('hdr')) return 'HDR';
-                 if (qLower.includes('hd')) return 'HD';
-                 return q.split(' ')[0].toUpperCase();
-                })()}
-               </div>
-              )}
-             </div>
-             <div className="fe-sports-card-info-under-v">
-              <div className="card-title-under-v">{item.title}</div>
-              {item.category && (
-               <div className="card-cat-under-v">{typeof item.category === 'object' ? item.category.name : 'Sports'}</div>
-              )}
-             </div>
-            </div>
-           ))}
-          </div>
-         </div>
-        ) : (
-         <div className="fe-movie-list-v">
-          {cat.movies.map((m) => (
-           <div 
-            key={m._id} 
-            className="fe-movie-card-v"
-            onClick={() => handleOpenModal(m, cat.type === 'new-releases' ? 'new-releases' : 'movie')}
-           >
-            {formatImageUrl(m, 'poster') && (
-             <img src={formatImageUrl(m, 'poster')} alt={m.title} />
-            )}
-            {m.access === 'Paid' && (
-             <div className="fe-premium-indicator-v">
-              <Crown size={12} fill="currentColor" />
-             </div>
-            )}
-            <div className="fe-card-hover-v">
-             <div className="fe-hover-content-v">
-              <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
-              <div className="fe-card-badges-v">
-               {(() => {
-                const quality = m.videoQuality || '4K Ultra HD';
-                const parts = quality.split(' ');
-                const prefix = parts[0] || '4K';
-                const suffix = parts.slice(1).join(' ') || 'Ultra HD';
-                return (
-                 <div className="fe-premium-badge-v">
-                  <span className="badge-prefix-v">{prefix}</span>
-                  <span className="badge-suffix-v">{suffix}</span>
-                 </div>
-                );
-               })()}
-               {(() => {
-                const ratingVal = parseFloat(m.imdbRating || '4.8');
-                const percentage = (ratingVal / 10) * 100;
-                return (
-                 <div 
-                  className="fe-badge-rating-v" 
-                  style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
-                 >
-                  <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
-                 </div>
-                );
-               })()}
-              </div>
-              <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'Thriller'}</div>
-              <h3 className="fe-card-info-title-v">{m.title}</h3>
-              <div className="fe-card-meta-v">
-               <span>{m.language || 'Malayalam'}</span>
-              </div>
-             </div>
-            </div>
-           </div>
-          ))}
+          <button className="lemo-toast-close-v" onClick={() => setSubMessage({ text: '', type: '' })}>
+           <X size={14} />
+          </button>
          </div>
         )}
-       </div>
-      ))}
-     </>
+      </div>
+     </div>
+
     {/* Quick View Modal */}
     {showModal && selectedContent && (
      <div className="fe-quick-modal-overlay-v" onClick={() => setShowModal(false)}>
@@ -883,7 +1150,7 @@ const Home = () => {
 
     /* Watch Online Section */
     .fe-watch-online-v { padding: 80px 5%; background: #000; text-align: center; }
-    .watch-online-header-v { margin-bottom: 50px; }
+    .watch-online-header-v { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 50px; text-align: left; }
     .watch-online-tag-v { font-size: 0.8rem; font-weight: 800; color: #888; letter-spacing: 3px; display: block; margin-bottom: 10px; }
     .watch-online-title-v { font-size: 3rem; font-weight: 800; color: #fff; margin: 0; }
     
@@ -913,10 +1180,17 @@ const Home = () => {
 
     @media (max-width: 768px) {
      .watch-online-title-v { font-size: 2.2rem; }
-     .watch-online-grid-v { grid-template-columns: repeat(2, 1fr); gap: 15px; }
+     .watch-online-grid-v { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; }
      .online-quality-v { font-size: 0.5rem; padding: 3px 6px; }
      .online-rating-v { width: 30px; height: 30px; font-size: 0.7rem; }
      .meta-title-v { font-size: 0.95rem; }
+    }
+
+    @media (max-width: 480px) {
+     .watch-online-title-v { font-size: 1.8rem; }
+     .watch-online-grid-v { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+     .meta-title-v { font-size: 0.85rem; }
+     .watch-online-header-v { margin-bottom: 25px; }
     }
 
     .fe-row-v { margin-bottom: 60px; padding: 0 5%; }
@@ -1277,6 +1551,185 @@ const Home = () => {
      }
      .channel-title-v {
       font-size: 0.75rem;
+     }
+     }
+    }
+
+    /* Subscription CTA Styles */
+    .fe-subscription-cta-v {
+     padding: 60px 5%;
+     background: linear-gradient(135deg, rgba(179, 211, 50, 0.1) 0%, rgba(0,0,0,0.8) 100%);
+     border-top: 1px solid rgba(255,255,255,0.05);
+     border-bottom: 1px solid rgba(255,255,255,0.05);
+     margin-bottom: 50px;
+     margin-top: 20px;
+     display: flex;
+     justify-content: center;
+     text-align: center;
+    }
+    .fe-cta-content-v {
+     max-width: 600px;
+     width: 100%;
+     margin: 0 auto;
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     text-align: center;
+    }
+    .fe-cta-content-v h2 {
+     font-size: 2.2rem;
+     font-weight: 800;
+     color: #fff;
+     margin-bottom: 15px;
+     width: 100%;
+    }
+    .fe-cta-content-v p {
+     color: #aaa;
+     font-size: 1rem;
+     margin-bottom: 30px;
+     line-height: 1.5;
+     width: 100%;
+    }
+    .fe-cta-input-group-v {
+     display: flex;
+     gap: 15px;
+     align-items: center;
+     justify-content: center;
+     width: 100%;
+    }
+     .lemo-toast-notification-v {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      z-index: 100000;
+      background: rgba(15, 15, 15, 0.85);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      max-width: 380px;
+      width: calc(100% - 60px);
+      animation: lemoToastIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+     }
+     .lemo-toast-accent-v {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 5px;
+      height: 100%;
+     }
+     .lemo-toast-notification-v.error .lemo-toast-accent-v {
+      background: #ff4d4d;
+      box-shadow: 0 0 15px rgba(255, 77, 77, 0.6);
+     }
+     .lemo-toast-notification-v.success .lemo-toast-accent-v {
+      background: #b3d332;
+      box-shadow: 0 0 15px rgba(179, 211, 50, 0.6);
+     }
+     .lemo-toast-body-v {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.4;
+      text-align: left;
+     }
+     .lemo-toast-icon-v {
+      flex-shrink: 0;
+     }
+     .lemo-toast-icon-v.error {
+      color: #ff4d4d;
+     }
+     .lemo-toast-icon-v.success {
+      color: #b3d332;
+     }
+     .lemo-toast-close-v {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+     }
+     .lemo-toast-close-v:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      transform: rotate(90deg);
+     }
+     @keyframes lemoToastIn {
+      from { opacity: 0; transform: translateY(20px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+     }
+    .fe-cta-email-v {
+     flex: 1;
+     background: rgba(255,255,255,0.08);
+     border: 1px solid rgba(255,255,255,0.2);
+     padding: 16px 20px;
+     border-radius: 8px;
+     color: #fff;
+     font-size: 1.05rem;
+     outline: none;
+     transition: 0.3s;
+     width: 100%;
+    }
+    .fe-cta-email-v:focus {
+     border-color: #b3d332;
+     background: rgba(255,255,255,0.12);
+    }
+    .fe-cta-email-v::placeholder {
+     color: rgba(255,255,255,0.4);
+    }
+    .fe-cta-btn-v {
+     background: #b3d332;
+     color: #000;
+     border: none;
+     padding: 16px 35px;
+     border-radius: 8px;
+     font-weight: 800;
+     font-size: 1.05rem;
+     cursor: pointer;
+     transition: 0.3s;
+     white-space: nowrap;
+    }
+    .fe-cta-btn-v:hover {
+     background: #9ab829;
+     transform: translateY(-2px);
+     box-shadow: 0 10px 20px rgba(179,211,50,0.3);
+    }
+    @media (max-width: 600px) {
+     .fe-cta-input-group-v {
+      flex-direction: column;
+      width: 100%;
+     }
+     .fe-cta-email-v {
+      width: 100%;
+      padding: 18px 20px;
+      font-size: 1.1rem;
+     }
+     .fe-cta-btn-v {
+      width: 100%;
+      padding: 18px 20px;
+      font-size: 1.1rem;
+     }
+     .fe-subscription-cta-v {
+      padding: 40px 5%;
+     }
+     .fe-cta-content-v h2 {
+      font-size: 1.8rem;
      }
     }
    ` }} />

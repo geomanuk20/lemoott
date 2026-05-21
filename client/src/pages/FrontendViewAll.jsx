@@ -3,6 +3,14 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, Play, Star, Loader2, Crown } from 'lucide-react';
 import Loader from '../components/Loader';
 import FrontendLayout from '../components/FrontendLayout';
+import { formatImageUrl } from '../utils/image';
+
+const isActive = (status) => {
+  if (status === undefined || status === null) return true;
+  if (typeof status === 'boolean') return status;
+  const str = String(status).toLowerCase().trim();
+  return str === 'active' || str === 'true' || str === '1';
+};
 
 const FrontendViewAll = () => {
  const { type, title } = useParams();
@@ -15,8 +23,8 @@ const FrontendViewAll = () => {
    setLoading(true);
    try {
     let url = '';
-    if (type === 'movies') url = 'http://localhost:5001/api/movies';
-    else if (type === 'shows') url = 'http://localhost:5001/api/shows';
+    if (type === 'movies' || type === 'short-film') url = 'http://localhost:5001/api/movies';
+    else if (type === 'shows' || type === 'short-web-series') url = 'http://localhost:5001/api/shows';
     else if (type === 'sports') url = 'http://localhost:5001/api/sports-videos';
     else if (type === 'live') url = 'http://localhost:5001/api/tv-channels';
     else if (type === 'new-releases') url = 'http://localhost:5001/api/new-releases';
@@ -24,7 +32,13 @@ const FrontendViewAll = () => {
     const res = await fetch(url);
     const data = await res.json();
     
-    let filteredData = Array.isArray(data) ? data.filter(item => item.status?.toLowerCase() === 'active') : [];
+    let filteredData = Array.isArray(data) ? data.filter(item => isActive(item.status)) : [];
+
+    if (type === 'short-film') {
+      filteredData = filteredData.filter(item => item.contentType === 'Short Film');
+    } else if (type === 'short-web-series') {
+      filteredData = filteredData.filter(item => item.contentType === 'Short Web Series');
+    }
 
     // Special filtering for "Popular", "Trending", etc if needed
     if (title?.toLowerCase().includes('popular')) {
@@ -44,14 +58,6 @@ const FrontendViewAll = () => {
   window.scrollTo(0, 0);
  }, [type, title]);
 
- const formatImageUrl = (item) => {
-  if (!item) return '';
-  const url = item.poster || item.thumbnail || item.image || '';
-  if (!url || typeof url !== 'string' || url.trim() === '') return '';
-  if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
-  const cleanPath = url.startsWith('/') ? url.substring(1) : url;
-  return `http://localhost:5001/${cleanPath}`;
- };
 
  return (
   <FrontendLayout isTransparent={false}>
@@ -74,13 +80,13 @@ const FrontendViewAll = () => {
      <div className="fe-viewall-grid-v">
       {items.map((item) => (
        <Link 
-        to={`/details/${type === 'shows' ? 'show' : type === 'live' ? 'live' : type === 'sports' ? 'sports' : 'movie'}/${item._id}`} 
+        to={`/details/${(type === 'shows' || type === 'short-web-series') ? 'show' : type === 'live' ? 'live' : type === 'sports' ? 'sports' : 'movie'}/${item._id}`} 
         key={item._id} 
         className="fe-grid-card-v"
        >
         <div className="card-poster-v">
-         <img src={formatImageUrl(item)} alt={item.title} />
-         {(item.access === 'Paid' || item.seriesAccess === 'Paid') && (
+         <img src={formatImageUrl(item, 'poster')} alt={item.title || item.name} />
+         {(item.access === 'Paid' || item.seriesAccess === 'Paid' || item.tvAccess === 'Paid') && (
           <div className="premium-badge-v">
            <Crown size={12} fill="currentColor" />
           </div>
@@ -90,11 +96,13 @@ const FrontendViewAll = () => {
          </div>
         </div>
         <div className="card-info-v">
-         <div className="card-meta-v">
-          <span className="rating-v"><Star size={12} fill="#b3d332" color="#b3d332" /> {item.imdbRating || '7.5'}</span>
-          <span className="year-v">{item.releaseYear || item.year || 2024}</span>
-         </div>
-         <h3>{item.title}</h3>
+         {type !== 'live' && (
+          <div className="card-meta-v">
+           <span className="rating-v"><Star size={12} fill="#b3d332" color="#b3d332" /> {item.imdbRating || '7.5'}</span>
+           <span className="year-v">{item.releaseYear || item.year || 2024}</span>
+          </div>
+         )}
+         <h3>{item.title || item.name}</h3>
         </div>
        </Link>
       ))}

@@ -32,7 +32,7 @@ const EditShow = () => {
   metaDescription: '',
   keywords: '',
   imdbId: '',
-  description: ''
+  contentType: 'TV Show'
  });
 
  const [languages, setLanguages] = useState([]);
@@ -67,7 +67,8 @@ const EditShow = () => {
      ...showData,
      genres: Array.isArray(showData.genres) ? showData.genres : (showData.genres ? [showData.genres] : []),
      actors: Array.isArray(showData.actors) ? showData.actors : (showData.actors ? showData.actors.split(',').map(s => s.trim()) : []),
-     directors: Array.isArray(showData.directors) ? showData.directors : (showData.directors ? showData.directors.split(',').map(s => s.trim()) : [])
+     directors: Array.isArray(showData.directors) ? showData.directors : (showData.directors ? showData.directors.split(',').map(s => s.trim()) : []),
+     contentType: 'TV Show'
     }));
    } catch (err) {
     console.error('Error fetching data:', err);

@@ -29,7 +29,7 @@ const AddEpisode = () => {
   status: 'Active',
   poster: '',
   videoType: 'Local',
-  videoQuality: 'Active',
+  videoQuality: '8K Ultra HD',
   videoFile: '',
   videoFile480: '',
   videoFile720: '',
@@ -65,6 +65,8 @@ const AddEpisode = () => {
   fetchShowsAndSeasons();
  }, []);
 
+ const isShortPath = window.location.pathname.includes('/short-web-series');
+
  const handleChange = (e) => {
   const { name, value } = e.target;
   setFormData(prev => ({ ...prev, [name]: value }));
@@ -98,17 +100,25 @@ const AddEpisode = () => {
   e.preventDefault();
   setLoading(true);
   try {
+   const payload = { ...formData };
+   if (!payload.seasonId || isShortPath) {
+    payload.seasonId = null;
+   }
    const response = await fetch('http://localhost:5001/api/episodes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(formData)
+    body: JSON.stringify(payload)
    });
    if (response.ok) {
     alert('Episode added successfully!');
-    navigate('/admin/tv-shows/episodes');
+    navigate(isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes');
+   } else {
+    const errData = await response.json();
+    alert('Failed to save episode: ' + (errData.message || response.statusText));
    }
   } catch (err) {
    console.error('Error saving episode:', err);
+   alert('Error saving episode: ' + err.message);
   } finally {
    setLoading(false);
   }
@@ -117,7 +127,7 @@ const AddEpisode = () => {
  return (
   <div className="add-episode-page">
    <div className="top-nav">
-    <button className="back-btn" onClick={() => navigate(-1)}>
+    <button className="back-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes')}>
      <ArrowLeft size={20} color="#b3d332" strokeWidth={3} />
      <span>Back</span>
     </button>
@@ -132,7 +142,7 @@ const AddEpisode = () => {
       value={formData.imdbId}
       onChange={(e) => setFormData({...formData, imdbId: e.target.value})}
      />
-     <button className="fetch-btn">FETCH</button>
+     <button type="button" className="fetch-btn">FETCH</button>
     </div>
     <p className="imdb-note">(Recommended : Search by IMDb ID for better result)</p>
     <p className="imdb-note">Note: Keep in mind that the information about some episodes may be missing since it relies on fetching data from the TMDb API.</p>
@@ -176,20 +186,25 @@ const AddEpisode = () => {
       </div>
 
       <div className="form-group">
-       <label>Shows*</label>
-       <select name="showId" value={formData.showId} onChange={handleChange} required>
-        <option value="">Select Show</option>
-        {shows.map(s => <option key={s._id} value={s._id}>{s.title}</option>)}
-       </select>
-      </div>
+        <label>Shows*</label>
+        <select name="showId" value={formData.showId} onChange={handleChange} required>
+         <option value="">Select Show</option>
+         {shows
+           .filter(show => isShortPath ? show.contentType === 'Short Web Series' : (show.contentType === 'TV Show' || !show.contentType))
+           .map(s => <option key={s._id} value={s._id}>{s.title}</option>)
+         }
+        </select>
+       </div>
 
-      <div className="form-group">
-       <label>Seasons*</label>
-       <select name="seasonId" value={formData.seasonId} onChange={handleChange} required>
-        <option value="">Select Season</option>
-        {seasons.filter(s => s.showId === formData.showId).map(s => <option key={s._id} value={s._id}>{s.title}</option>)}
-       </select>
-      </div>
+       {!isShortPath && (
+        <div className="form-group">
+         <label>Seasons</label>
+         <select name="seasonId" value={formData.seasonId} onChange={handleChange}>
+          <option value="">Select Season (Optional)</option>
+          {seasons.filter(s => s.showId === formData.showId).map(s => <option key={s._id} value={s._id}>{s.title}</option>)}
+         </select>
+        </div>
+       )}
 
       <div className="form-group">
        <label>IMDb Rating</label>
@@ -272,16 +287,13 @@ const AddEpisode = () => {
          <span className="sub-label">(For Local and URL)</span>
         </div>
         <div className="video-source-input">
-         <div className="custom-radio-group">
-          <label className="radio-item">
-           <input type="radio" name="videoQuality" value="Active" checked={formData.videoQuality === 'Active'} onChange={handleChange} />
-           <span className="radio-dot"></span>
-          </label>
-          <label className="radio-item ml-30">
-           <input type="radio" name="videoQuality" value="Inactive" checked={formData.videoQuality === 'Inactive'} onChange={handleChange} />
-           <span className="radio-dot"></span>
-          </label>
-         </div>
+         <select name="videoQuality" value={formData.videoQuality || '8K Ultra HD'} onChange={handleChange} style={{ background: '#333', border: '1px solid #444', padding: '12px', color: '#fff', borderRadius: '4px', outline: 'none', width: '100%' }}>
+          <option value="8K Ultra HD">8K Ultra HD</option>
+          <option value="4K Ultra HD">4K Ultra HD</option>
+          <option value="Full HD">Full HD</option>
+          <option value="HD">HD</option>
+          <option value="SD">SD</option>
+         </select>
         </div>
        </div>
 

@@ -6,7 +6,7 @@ const episodeSchema = new mongoose.Schema({
   description: String,
   access: { type: String, default: 'Paid' },
   showId: { type: mongoose.Schema.Types.ObjectId, ref: 'Show', required: true },
-  seasonId: { type: mongoose.Schema.Types.ObjectId, ref: 'Season', required: true },
+  seasonId: { type: mongoose.Schema.Types.ObjectId, ref: 'Season' },
   imdbRating: String,
   releaseDate: Date,
   duration: String,

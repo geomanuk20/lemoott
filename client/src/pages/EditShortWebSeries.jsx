@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { uploadToCloudinary } from '../utils/upload';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Editor } from '@tinymce/tinymce-react';
 import { ChevronLeft, Save, ChevronDown } from 'lucide-react';
 import { formatImageUrl } from '../utils/image';
 
-const AddShow = () => {
+const EditShortWebSeries = () => {
+ const { id } = useParams();
  const navigate = useNavigate();
  const posterInputRef = useRef(null);
  const thumbnailInputRef = useRef(null);
@@ -31,7 +32,7 @@ const AddShow = () => {
   metaDescription: '',
   keywords: '',
   imdbId: '',
-  contentType: 'TV Show'
+  contentType: 'Short Web Series' // Strictly set to Short Web Series
  });
 
  const [languages, setLanguages] = useState([]);
@@ -49,22 +50,32 @@ const AddShow = () => {
  useEffect(() => {
   const fetchData = async () => {
    try {
-    const [langRes, genreRes, actorsRes, directorsRes] = await Promise.all([
+    const [langRes, genreRes, actorsRes, directorsRes, showRes] = await Promise.all([
      fetch('http://localhost:5001/api/languages'),
      fetch('http://localhost:5001/api/genres'),
      fetch('http://localhost:5001/api/actors'),
-     fetch('http://localhost:5001/api/directors')
+     fetch('http://localhost:5001/api/directors'),
+     fetch(`http://localhost:5001/api/shows/${id}`)
     ]);
     setLanguages(await langRes.json());
     setGenresList(await genreRes.json());
     setAvailableActors(await actorsRes.json());
     setAvailableDirectors(await directorsRes.json());
+    const showData = await showRes.json();
+    setFormData(prev => ({
+     ...prev,
+     ...showData,
+     genres: Array.isArray(showData.genres) ? showData.genres : (showData.genres ? [showData.genres] : []),
+     actors: Array.isArray(showData.actors) ? showData.actors : (showData.actors ? showData.actors.split(',').map(s => s.trim()) : []),
+     directors: Array.isArray(showData.directors) ? showData.directors : (showData.directors ? showData.directors.split(',').map(s => s.trim()) : []),
+     contentType: 'Short Web Series' // Keep locked
+    }));
    } catch (err) {
     console.error('Error fetching data:', err);
    }
   };
   fetchData();
- }, []);
+ }, [id]);
 
  const handleChange = (e) => {
   const { name, value } = e.target;
@@ -97,64 +108,43 @@ const AddShow = () => {
   e.preventDefault();
   setLoading(true);
   try {
-   const response = await fetch('http://localhost:5001/api/shows', {
-    method: 'POST',
+   const response = await fetch(`http://localhost:5001/api/shows/${id}`, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData)
    });
    if (response.ok) {
-    navigate('/admin/tv-shows/shows');
+    navigate('/admin/short-web-series');
    } else {
     const errorData = await response.json();
-    alert(`Failed to add show: ${errorData.message}`);
+    alert(`Failed to update Short Web Series: ${errorData.message}`);
    }
   } catch (err) {
-   console.error('Error adding show:', err);
-   alert('An error occurred while adding the show.');
+   console.error('Error updating Short Web Series:', err);
+   alert('An error occurred while updating the short web series.');
   } finally {
    setLoading(false);
   }
  };
 
- const fetchImdbData = async () => {
-  if (!formData.imdbId) return;
-  // Mock IMDb fetch for now
-  alert('IMDb data fetching logic will be implemented here');
- };
-
  return (
   <div className="add-show-page">
    <div className="top-nav">
-    <button className="back-btn" onClick={() => navigate('/admin/tv-shows/shows')}>
+    <button className="back-btn" onClick={() => navigate('/admin/short-web-series')}>
      <ChevronLeft size={24} />
      <span>Back</span>
     </button>
    </div>
 
-   <div className="imdb-import-section">
-    <label>Import From IMDb</label>
-    <div className="imdb-input-group">
-     <input 
-      type="text" 
-      name="imdbId"
-      value={formData.imdbId}
-      onChange={handleChange}
-      placeholder="Enter IMDb ID (e.g. tt11856010) or Title (e.g. House of Cards)" 
-     />
-     <button type="button" className="fetch-btn" onClick={fetchImdbData}>FETCH</button>
-    </div>
-    <p className="hint">(Recommended : Search by IMDb ID for better result)</p>
-   </div>
-
    <form onSubmit={handleSubmit}>
     <div className="form-grid">
-     {/* Left Column: Show Info */}
+     {/* Left Column: Series Info */}
      <div className="form-column">
-      <h2 className="section-title">Show Info</h2>
+      <h2 className="section-title">Edit Short Web Series</h2>
       
       <div className="form-group">
-       <label>Show Name*</label>
-       <input type="text" name="title" value={formData.title} onChange={handleChange} required />
+       <label>Series Title*</label>
+       <input type="text" name="title" value={formData.title || ''} onChange={handleChange} required />
       </div>
 
       <div className="form-group">
@@ -170,26 +160,26 @@ const AddShow = () => {
          content_css: 'dark'
         }}
         onEditorChange={handleEditorChange}
-        value={formData.description}
+        value={formData.description || ''}
        />
       </div>
 
       <div className="form-group">
        <label>Sort Info</label>
-       <textarea name="sortInfo" value={formData.sortInfo} onChange={handleChange} style={{ height: '80px' }}></textarea>
+       <textarea name="sortInfo" value={formData.sortInfo || ''} onChange={handleChange} style={{ height: '80px' }}></textarea>
       </div>
 
       <div className="form-row">
        <div className="form-group half">
         <label>Upcoming</label>
-        <select name="upcoming" value={formData.upcoming} onChange={handleChange}>
+        <select name="upcoming" value={formData.upcoming || 'No'} onChange={handleChange}>
          <option value="No">No</option>
          <option value="Yes">Yes</option>
         </select>
        </div>
        <div className="form-group half">
         <label>Series Access</label>
-        <select name="seriesAccess" value={formData.seriesAccess} onChange={handleChange}>
+        <select name="seriesAccess" value={formData.seriesAccess || 'Paid'} onChange={handleChange}>
          <option value="Paid">Paid</option>
          <option value="Free">Free</option>
         </select>
@@ -198,7 +188,7 @@ const AddShow = () => {
 
       <div className="form-group">
        <label>Language*</label>
-       <select name="language" value={formData.language} onChange={handleChange} required>
+       <select name="language" value={formData.language || ''} onChange={handleChange} required>
         <option value="">Select Language</option>
         {languages.map(lang => (
          <option key={lang._id} value={lang.name}>{lang.name}</option>
@@ -301,17 +291,17 @@ const AddShow = () => {
 
       <div className="form-group">
        <label>IMDb Rating</label>
-       <input type="text" name="imdbRating" value={formData.imdbRating} onChange={handleChange} />
+       <input type="text" name="imdbRating" value={formData.imdbRating || ''} onChange={handleChange} />
       </div>
       
       <div className="form-group">
        <label>Release Year</label>
-       <input type="number" name="releaseYear" value={formData.releaseYear} onChange={handleChange} placeholder="e.g. 2024" />
+       <input type="number" name="releaseYear" value={formData.releaseYear || ''} onChange={handleChange} placeholder="e.g. 2024" />
       </div>
 
       <div className="form-group">
        <label>Video Quality</label>
-       <select name="videoQuality" value={formData.videoQuality} onChange={handleChange}>
+       <select name="videoQuality" value={formData.videoQuality || '4K Ultra HD'} onChange={handleChange}>
         <option value="8K Ultra HD">8K Ultra HD</option>
         <option value="4K Ultra HD">4K Ultra HD</option>
         <option value="Ultra HD">Ultra HD</option>
@@ -323,7 +313,7 @@ const AddShow = () => {
 
       <div className="form-group">
        <label>Content Rating</label>
-       <select name="contentRating" value={formData.contentRating} onChange={handleChange}>
+       <select name="contentRating" value={formData.contentRating || '16+'} onChange={handleChange}>
         <option value="16+">16+</option>
         <option value="18+">18+</option>
         <option value="U">U</option>
@@ -334,7 +324,7 @@ const AddShow = () => {
       <div className="form-group">
        <label>Show Poster*</label>
        <div className="file-input-group">
-        <input type="text" name="poster" value={formData.poster && formData.poster.startsWith('data:') ? 'Image Selected' : formData.poster} onChange={handleChange} placeholder="Paste image URL..." />
+        <input type="text" name="poster" value={formData.poster && formData.poster.startsWith('data:') ? 'Image Selected' : (formData.poster || '')} onChange={handleChange} placeholder="Paste image URL..." />
         <button type="button" className="select-btn" onClick={() => posterInputRef.current.click()}>Select</button>
         <input type="file" ref={posterInputRef} hidden onChange={(e) => handleFileChange(e, 'poster')} />
        </div>
@@ -349,7 +339,7 @@ const AddShow = () => {
       <div className="form-group">
        <label>Landscape Poster (Thumbnail)*</label>
        <div className="file-input-group">
-        <input type="text" name="thumbnail" value={formData.thumbnail && formData.thumbnail.startsWith('data:') ? 'Image Selected' : formData.thumbnail} onChange={handleChange} placeholder="Paste image URL..." />
+        <input type="text" name="thumbnail" value={formData.thumbnail && formData.thumbnail.startsWith('data:') ? 'Image Selected' : (formData.thumbnail || '')} onChange={handleChange} placeholder="Paste image URL..." />
         <button type="button" className="select-btn" onClick={() => thumbnailInputRef.current.click()}>Select</button>
         <input type="file" ref={thumbnailInputRef} hidden onChange={(e) => handleFileChange(e, 'thumbnail')} />
        </div>
@@ -363,18 +353,10 @@ const AddShow = () => {
 
       <div className="form-group">
        <label>Status</label>
-       <div className="custom-radio-group">
-        <label className="radio-item">
-         <input type="radio" name="status" value="Active" checked={formData.status === 'Active'} onChange={handleChange} />
-         <span className="radio-dot"></span>
-         <span>Active</span>
-        </label>
-        <label className="radio-item ml-30">
-         <input type="radio" name="status" value="Inactive" checked={formData.status === 'Inactive'} onChange={handleChange} />
-         <span className="radio-dot"></span>
-         <span>Inactive</span>
-        </label>
-       </div>
+       <select name="status" value={formData.status || 'Active'} onChange={handleChange}>
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+       </select>
       </div>
      </div>
 
@@ -384,24 +366,24 @@ const AddShow = () => {
       
       <div className="form-group">
        <label>SEO Title</label>
-       <input type="text" name="seoTitle" value={formData.seoTitle} onChange={handleChange} />
+       <input type="text" name="seoTitle" value={formData.seoTitle || ''} onChange={handleChange} />
       </div>
 
       <div className="form-group">
        <label>Meta Description</label>
-       <textarea name="metaDescription" value={formData.metaDescription} onChange={handleChange}></textarea>
+       <textarea name="metaDescription" value={formData.metaDescription || ''} onChange={handleChange}></textarea>
       </div>
 
       <div className="form-group">
        <label>Keyword</label>
-       <textarea name="keywords" value={formData.keywords} onChange={handleChange}></textarea>
+       <textarea name="keywords" value={formData.keywords || ''} onChange={handleChange}></textarea>
        <p className="hint">use comma(,) to separate keyword.</p>
       </div>
 
       <div className="form-actions">
        <button type="submit" className="save-btn" disabled={loading}>
         <Save size={20} />
-        <span>{loading ? 'Saving...' : 'Save'}</span>
+        <span>{loading ? 'Updating...' : 'Update'}</span>
        </button>
       </div>
      </div>
@@ -429,13 +411,6 @@ const AddShow = () => {
     .dropdown-option input[type="checkbox"] { width: 16px; height: 16px; accent-color: #b3d332; cursor: pointer; }
     .checkbox-option { transition: background 0.2s; }
 
-    .imdb-import-section { background: #151515; padding: 25px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #222; }
-    .imdb-import-section label { color: #fff; font-weight: 700; display: block; margin-bottom: 15px; font-size: 1.1rem; }
-    .imdb-input-group { display: flex; gap: 15px; max-width: 800px; }
-    .imdb-input-group input { flex: 1; background: transparent; border: 1px solid #333; padding: 12px 15px; color: #fff; border-radius: 4px; outline: none; font-size: 0.95rem; }
-    .fetch-btn { background: #b3d332; color: #fff; border: none; padding: 0 25px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.9rem; }
-    .hint { color: #888; font-size: 0.85rem; margin-top: 8px; font-weight: 500; }
-
     .section-title { color: #fff; font-size: 1.8rem; font-weight: 800; margin-bottom: 30px; border-left: 5px solid #b3d332; padding-left: 15px; line-height: 1; }
 
     .form-grid { display: flex; gap: 50px; }
@@ -461,18 +436,10 @@ const AddShow = () => {
     .save-btn {
      background: #b3d332; color: #fff; border: none; padding: 12px 40px; border-radius: 4px;
      display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1rem; cursor: pointer;
-     box-shadow: 0 4px 10px rgba(255, 0, 0, 0.2); transition: transform 0.2s;
+     transition: transform 0.2s;
     }
     .save-btn:hover { transform: translateY(-2px); }
     .save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .custom-radio-group { display: flex; align-items: center; }
-    .radio-item { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 700; position: relative; color: #fff; }
-    .radio-item input { position: absolute; opacity: 0; cursor: pointer; }
-    .radio-dot { height: 20px; width: 20px; background-color: #000; border: 2px solid #fff; border-radius: 50% !important; display: inline-block; position: relative; }
-    .radio-item input:checked ~ .radio-dot { border-color: #b3d332; }
-    .radio-item input:checked ~ .radio-dot:after { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; background-color: #b3d332; border-radius: 50% !important; }
-    .ml-30 { margin-left: 30px; }
 
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
    ` }} />
@@ -480,4 +447,4 @@ const AddShow = () => {
  );
 };
 
-export default AddShow;
+export default EditShortWebSeries;

@@ -2,8 +2,12 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -169,11 +173,14 @@ const menuSettingsSchema = new mongoose.Schema({
   shows: { type: String, default: 'ON' },
   movies: { type: String, default: 'ON' },
   sports: { type: String, default: 'ON' },
-  liveTv: { type: String, default: 'ON' }
+  liveTv: { type: String, default: 'ON' },
+  shortFilms: { type: String, default: 'ON' },
+  webSeries: { type: String, default: 'ON' }
 });
 const MenuSettings = mongoose.model('MenuSettings', menuSettingsSchema);
-const jwt = require('jsonwebtoken');
+// jwt already declared at top
 const { upload } = require('./cloudinaryConfig');
+const { uploadToMux, getPlaybackPolicyCached, signPlaybackId } = require('./muxService');
 const multer = require('multer');
 
 // Middleware
@@ -183,9 +190,96 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static('uploads'));
 app.use('/upload', express.static('uploads')); // Alias for legacy support
 
+// YouTube Live HLS Stream Extractor Endpoint
+app.get('/api/youtube/live-m3u8', async (req, res) => {
+  const { url } = req.query;
+  if (!url) {
+    return res.status(400).json({ message: 'URL query parameter is required' });
+  }
+
+  try {
+    const axios = require('axios');
+
+    // Extract 11-character YouTube video ID
+    const ytReg = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|embed|live)\/|watch\?v=)|youtu\.be\/)([^"&?\/ ]{11})/;
+    const ytMatch = url.match(ytReg);
+    if (!ytMatch || !ytMatch[1]) {
+      return res.status(400).json({ message: 'Could not extract valid YouTube video ID from URL' });
+    }
+    const videoId = ytMatch[1];
+
+    // Try embed page first (lightweight, bypasses cookie consent screens completely)
+    // Try watch page second as fallback
+    const urlsToTry = [
+      `https://www.youtube.com/embed/${videoId}`,
+      `https://www.youtube.com/watch?v=${videoId}`
+    ];
+
+    let extractedUrl = null;
+
+    for (const urlToFetch of urlsToTry) {
+      try {
+        console.log(`[YouTube Live Extractor] Fetching: ${urlToFetch}`);
+        const response = await axios.get(urlToFetch, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.youtube.com/',
+          },
+          timeout: 8000
+        });
+
+        const html = response.data;
+
+        // 1. Look for hlsManifestUrl key in JSON/JavaScript block
+        const hlsMatch = html.match(/"hlsManifestUrl"\s*:\s*"([^"]+)"/);
+        if (hlsMatch && hlsMatch[1]) {
+          extractedUrl = hlsMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '');
+          console.log(`[YouTube Live Extractor] Extracted via hlsManifestUrl key from ${urlToFetch}`);
+          break;
+        }
+
+        // 2. Look for hlsManifestUrl key with different escaping
+        const hlsMatchEscaped = html.match(/hlsManifestUrl\\"\s*:\s*\\"(https:[^\"]+)\\"/);
+        if (hlsMatchEscaped && hlsMatchEscaped[1]) {
+          extractedUrl = hlsMatchEscaped[1].replace(/\\u0026/g, '&').replace(/\\/g, '');
+          console.log(`[YouTube Live Extractor] Extracted via escaped hlsManifestUrl key from ${urlToFetch}`);
+          break;
+        }
+
+        // 3. Look for generic manifest/hls_live URL pattern
+        const fallbackMatch = html.match(/https?:\\\/\\\/[^"'\s]+manifest\\\/hls_live[^"'\s]+/);
+        if (fallbackMatch) {
+          extractedUrl = fallbackMatch[0].replace(/\\u0026/g, '&').replace(/\\/g, '');
+          console.log(`[YouTube Live Extractor] Extracted via generic hls_live pattern from ${urlToFetch}`);
+          break;
+        }
+
+        const fallbackMatchRaw = html.match(/https?:\/\/[^"'\s]+manifest\/hls_live[^"'\s]+/);
+        if (fallbackMatchRaw) {
+          extractedUrl = fallbackMatchRaw[0].replace(/\\u0026/g, '&').replace(/\\/g, '');
+          console.log(`[YouTube Live Extractor] Extracted via raw hls_live pattern from ${urlToFetch}`);
+          break;
+        }
+      } catch (err) {
+        console.error(`[YouTube Live Extractor] Failed to extract from ${urlToFetch}:`, err.message);
+      }
+    }
+
+    if (extractedUrl) {
+      return res.json({ m3u8Url: extractedUrl });
+    }
+
+    return res.status(404).json({ message: 'No live HLS stream found for this YouTube URL' });
+  } catch (error) {
+    console.error('Error resolving YouTube HLS stream:', error.message);
+    return res.status(500).json({ message: 'Failed to resolve YouTube HLS stream', error: error.message });
+  }
+});
+
 // Upload Route - wraps multer to catch Cloudinary/middleware errors
 app.post('/api/upload', (req, res) => {
-  upload.single('file')(req, res, (err) => {
+  upload.single('file')(req, res, async (err) => {
     if (err) {
       console.error('Upload middleware error:', err);
       return res.status(500).json({ message: err.message || 'File upload failed' });
@@ -193,8 +287,26 @@ app.post('/api/upload', (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
-    console.log('File uploaded to Cloudinary:', req.file.path);
-    res.json({ url: req.file.path });
+
+    let fileUrl = req.file.path;
+    const isVideo = req.file.mimetype.startsWith('video/') || req.file.originalname.match(/\.(mp4|mkv|webm|avi|mov)$/i);
+
+    if (isVideo && process.env.MUX_TOKEN_ID && process.env.MUX_TOKEN_SECRET) {
+      try {
+        console.log(`Video detected: ${req.file.originalname}. Ingesting to Mux...`);
+        const muxUrl = await uploadToMux(fileUrl);
+        if (muxUrl) {
+          console.log(`Mux playback URL created: ${muxUrl}`);
+          fileUrl = muxUrl;
+        }
+      } catch (muxErr) {
+        console.error('Mux ingestion failed, falling back to Cloudinary URL:', muxErr.message);
+      }
+    } else {
+      console.log('File uploaded to Cloudinary:', fileUrl);
+    }
+
+    res.json({ url: fileUrl });
   });
 });
 
@@ -303,7 +415,10 @@ app.post('/api/login', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        profileImage: user.profileImage
+        profileImage: user.profileImage,
+        status: user.status,
+        subscriptionPlan: user.subscriptionPlan,
+        expiryDate: user.expiryDate
       }
     });
   } catch (err) {
@@ -344,11 +459,196 @@ app.post('/api/register', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        profileImage: user.profileImage
+        profileImage: user.profileImage,
+        status: user.status,
+        subscriptionPlan: user.subscriptionPlan,
+        expiryDate: user.expiryDate
       }
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// Google Login / Auth Route
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: 'Token is required' });
+    }
+
+    const settings = await SocialLoginSettings.findOne();
+    if (!settings || settings.googleLogin?.toUpperCase() === 'OFF') {
+      return res.status(400).json({ message: 'Google login is currently disabled' });
+    }
+
+    // Verify access token via Google userinfo API
+    const response = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
+    const payload = response.data;
+
+    const email = payload.email.trim().toLowerCase();
+    const name = payload.name;
+    const profileImage = payload.picture;
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      user = new User({
+        email,
+        name: name || email.split('@')[0],
+        password: randomPassword,
+        authProvider: 'Google',
+        role: 'customer',
+        profileImage: profileImage || '',
+        status: 'Active',
+        subscriptionPlan: 'Basic Plan',
+        expiryDate: '2099-12-31'
+      });
+      await user.save();
+    } else {
+      if (user.status !== 'Active') {
+        return res.status(403).json({ message: 'User account is inactive/suspended' });
+      }
+      let updated = false;
+      if (!user.profileImage && profileImage) {
+        user.profileImage = profileImage;
+        updated = true;
+      }
+      if (!user.name && name) {
+        user.name = name;
+        updated = true;
+      }
+      if (user.authProvider !== 'Google') {
+        user.authProvider = 'Google';
+        updated = true;
+      }
+      if (updated) {
+        await user.save();
+      }
+    }
+
+    if (!user.subscriptionPlan || user.subscriptionPlan === '' || !user.expiryDate || user.expiryDate === '') {
+      user.subscriptionPlan = 'Basic Plan';
+      user.expiryDate = '2099-12-31';
+      await user.save();
+    }
+
+    const jwtToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.json({
+      token: jwtToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profileImage: user.profileImage,
+        status: user.status,
+        subscriptionPlan: user.subscriptionPlan,
+        expiryDate: user.expiryDate
+      }
+    });
+  } catch (err) {
+    console.error('Google Auth Error:', err.response?.data || err.message);
+    res.status(500).json({ message: 'Google authentication failed' });
+  }
+});
+
+// Facebook Login / Auth Route
+app.post('/api/auth/facebook', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: 'Token is required' });
+    }
+
+    const settings = await SocialLoginSettings.findOne();
+    if (!settings || settings.facebookLogin?.toUpperCase() === 'OFF') {
+      return res.status(400).json({ message: 'Facebook login is currently disabled' });
+    }
+
+    // Verify access token via Facebook Graph API
+    const response = await axios.get(`https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${token}`);
+    const payload = response.data;
+
+    if (!payload.email) {
+      return res.status(400).json({ message: 'Facebook account must have an associated email address' });
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    const name = payload.name;
+    const profileImage = payload.picture?.data?.url;
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      user = new User({
+        email,
+        name: name || email.split('@')[0],
+        password: randomPassword,
+        authProvider: 'Facebook',
+        role: 'customer',
+        profileImage: profileImage || '',
+        status: 'Active',
+        subscriptionPlan: 'Basic Plan',
+        expiryDate: '2099-12-31'
+      });
+      await user.save();
+    } else {
+      if (user.status !== 'Active') {
+        return res.status(403).json({ message: 'User account is inactive/suspended' });
+      }
+      let updated = false;
+      if (!user.profileImage && profileImage) {
+        user.profileImage = profileImage;
+        updated = true;
+      }
+      if (!user.name && name) {
+        user.name = name;
+        updated = true;
+      }
+      if (user.authProvider !== 'Facebook') {
+        user.authProvider = 'Facebook';
+        updated = true;
+      }
+      if (updated) {
+        await user.save();
+      }
+    }
+
+    if (!user.subscriptionPlan || user.subscriptionPlan === '' || !user.expiryDate || user.expiryDate === '') {
+      user.subscriptionPlan = 'Basic Plan';
+      user.expiryDate = '2099-12-31';
+      await user.save();
+    }
+
+    const jwtToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.json({
+      token: jwtToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profileImage: user.profileImage,
+        status: user.status,
+        subscriptionPlan: user.subscriptionPlan,
+        expiryDate: user.expiryDate
+      }
+    });
+  } catch (err) {
+    console.error('Facebook Auth Error:', err.response?.data || err.message);
+    res.status(500).json({ message: 'Facebook authentication failed' });
   }
 });
 
@@ -698,6 +998,30 @@ app.delete('/api/genres/:id', async (req, res) => {
   }
 });
 
+// Mux Sign Token Route
+app.get('/api/mux/sign-token', async (req, res) => {
+  const { playbackId } = req.query;
+  if (!playbackId) {
+    return res.status(400).json({ message: 'playbackId query parameter is required' });
+  }
+
+  try {
+    const policy = await getPlaybackPolicyCached(playbackId);
+    if (policy === 'signed') {
+      const token = signPlaybackId(playbackId);
+      if (token) {
+        return res.json({ token });
+      } else {
+        return res.status(500).json({ message: 'Failed to sign playback ID. Verify backend signing key configuration.' });
+      }
+    }
+    return res.json({ token: null });
+  } catch (err) {
+    console.error('Error in /api/mux/sign-token:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Movie Routes
 app.get('/api/movies', async (req, res) => {
   try {
@@ -710,7 +1034,9 @@ app.get('/api/movies', async (req, res) => {
 
 app.get('/api/movies/:id', async (req, res) => {
   try {
-    const movie = await Movie.findById(req.params.id).populate('actors').populate('directors');
+    const movie = await Movie.findById(req.params.id)
+      .populate('actors')
+      .populate('directors');
     if (!movie) return res.status(404).json({ message: 'Movie not found' });
     res.json(movie);
   } catch (err) {
@@ -758,7 +1084,9 @@ app.get('/api/new-releases', async (req, res) => {
 
 app.get('/api/new-releases/:id', async (req, res) => {
   try {
-    const newRelease = await NewRelease.findById(req.params.id).populate('actors').populate('directors');
+    const newRelease = await NewRelease.findById(req.params.id)
+      .populate('actors')
+      .populate('directors');
     if (!newRelease) return res.status(404).json({ message: 'New Release not found' });
     res.json(newRelease);
   } catch (err) {
@@ -1018,6 +1346,22 @@ const seedGateways = async () => {
 // seedGateways();
 
 // Page Routes
+app.post('/api/pages', async (req, res) => {
+  try {
+    const { title, slug, description, content, status } = req.body;
+    const newPage = new Page({
+      title,
+      slug,
+      content: content || description || '',
+      status: status || 'Active'
+    });
+    await newPage.save();
+    res.status(201).json(newPage);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 app.get('/api/pages', async (req, res) => {
   try {
     const pages = await Page.find();
@@ -1322,7 +1666,20 @@ app.get('/api/social-login-settings', async (req, res) => {
       settings = new SocialLoginSettings();
       await settings.save();
     }
-    res.json(settings);
+    const responseSettings = settings.toObject();
+    if ((!responseSettings.googleClientId || responseSettings.googleClientId === 'Hidden in Demo') && process.env.GOOGLE_CLIENT_ID) {
+      responseSettings.googleClientId = process.env.GOOGLE_CLIENT_ID;
+    }
+    if ((!responseSettings.googleSecret || responseSettings.googleSecret === 'Hidden in Demo') && process.env.GOOGLE_CLIENT_SECRET) {
+      responseSettings.googleSecret = process.env.GOOGLE_CLIENT_SECRET;
+    }
+    if ((!responseSettings.facebookAppId || responseSettings.facebookAppId === 'Hidden in Demo') && process.env.FACEBOOK_APP_ID) {
+      responseSettings.facebookAppId = process.env.FACEBOOK_APP_ID;
+    }
+    if ((!responseSettings.facebookClientSecret || responseSettings.facebookClientSecret === 'Hidden in Demo') && process.env.FACEBOOK_APP_SECRET) {
+      responseSettings.facebookClientSecret = process.env.FACEBOOK_APP_SECRET;
+    }
+    res.json(responseSettings);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1582,6 +1939,7 @@ const runAllSeeds = async () => {
     await seedSliders();
     await seedExperiences();
     await seedPlans();
+    await seedHomeSections();
     console.log('Seeding sequence completed.');
   } catch (err) {
     console.error('Seeding sequence failed:', err);
@@ -1659,7 +2017,11 @@ app.delete('/api/subscription-plans/:id', async (req, res) => {
 // TV Show Routes
 app.get('/api/shows', async (req, res) => {
   try {
-    const shows = await Show.find().sort({ createdAt: -1 });
+    const query = {};
+    if (req.query.contentType) {
+      query.contentType = req.query.contentType;
+    }
+    const shows = await Show.find(query).sort({ createdAt: -1 });
     res.json(shows);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1668,7 +2030,9 @@ app.get('/api/shows', async (req, res) => {
 
 app.get('/api/shows/:id', async (req, res) => {
   try {
-    const show = await Show.findById(req.params.id).populate('actors').populate('directors');
+    const show = await Show.findById(req.params.id)
+      .populate('actors')
+      .populate('directors');
     res.json(show);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1866,7 +2230,7 @@ app.get('/api/episodes', async (req, res) => {
     if (req.query.showId) filter.showId = req.query.showId;
     if (req.query.seasonId) filter.seasonId = req.query.seasonId;
     const episodes = await Episode.find(filter)
-      .populate('showId', 'title')
+      .populate('showId', 'title contentType')
       .populate('seasonId', 'title')
       .sort({ createdAt: 1 });
     res.json(episodes);
@@ -1878,7 +2242,7 @@ app.get('/api/episodes', async (req, res) => {
 app.get('/api/episodes/:id', async (req, res) => {
   try {
     const episode = await Episode.findById(req.params.id)
-      .populate('showId', 'title')
+      .populate('showId', 'title contentType')
       .populate('seasonId', 'title');
     res.json(episode);
   } catch (err) {
@@ -2202,7 +2566,7 @@ app.get('/api/home-aggregated', async (req, res) => {
   try {
     const [
       sliders, movies, assets, experiences, shows, 
-      newReleases, sports, channels, sportsCategories, settings
+      newReleases, sports, channels, sportsCategories, settings, homeSections
     ] = await Promise.all([
       Slider.find({ status: 'Active' }).sort({ createdAt: -1 }).lean().maxTimeMS(5000),
       Movie.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
@@ -2213,7 +2577,8 @@ app.get('/api/home-aggregated', async (req, res) => {
       SportsVideo.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
       TVChannel.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(50).lean().maxTimeMS(5000),
       SportsCategory.find().lean().maxTimeMS(5000),
-      GeneralSettings.findOne().lean().maxTimeMS(5000)
+      GeneralSettings.findOne().lean().maxTimeMS(5000),
+      HomeSection.find({ status: 'Active' }).sort({ order: 1 }).lean().maxTimeMS(5000)
     ]);
 
     res.json({
@@ -2226,7 +2591,8 @@ app.get('/api/home-aggregated', async (req, res) => {
       sports,
       channels,
       sportsCategories,
-      settings
+      settings,
+      homeSections
     });
   } catch (err) {
     console.error('Aggregated Home Error:', err);
@@ -2263,6 +2629,24 @@ const seedSliders = async () => {
   }
 };
 // seedSliders();
+
+const seedHomeSections = async () => {
+  try {
+    const count = await HomeSection.countDocuments();
+    if (count === 0) {
+      const defaultSections = [
+        { title: 'NEW RELEASES', sectionType: 'Movie', layout: 'Slider', order: 1, limit: 15, status: 'Active' },
+        { title: 'WATCH SHOWS ONLINE', sectionType: 'Shows', layout: 'Slider', order: 2, limit: 6, status: 'Active' },
+        { title: 'BEST IN SPORTS', sectionType: 'Sports', layout: 'Slider', order: 3, limit: 15, status: 'Active' },
+        { title: 'LIVE TV', sectionType: 'Live TV', layout: 'Slider', order: 4, limit: 50, status: 'Active' }
+      ];
+      await HomeSection.insertMany(defaultSections);
+      console.log('Default Home Sections seeded');
+    }
+  } catch (err) {
+    console.error('Error seeding home sections:', err);
+  }
+};
 
 // Home Section Routes
 app.get('/api/home-sections', async (req, res) => {
@@ -2434,6 +2818,41 @@ app.delete('/api/users/permanent/:id', async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: 'User permanently deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/contents/:type/:id/view', async (req, res) => {
+  const { type, id } = req.params;
+  try {
+    let model;
+    const normalizedType = type.toLowerCase().trim();
+    if (normalizedType === 'movies' || normalizedType === 'movie' || normalizedType === 'short-film') {
+      model = Movie;
+    } else if (normalizedType === 'shows' || normalizedType === 'show' || normalizedType === 'series' || normalizedType === 'short-web-series') {
+      model = Show;
+    } else if (normalizedType === 'new-releases' || normalizedType === 'new-release') {
+      model = NewRelease;
+    } else if (normalizedType === 'tv-channels' || normalizedType === 'tv-channel' || normalizedType === 'live') {
+      model = TVChannel;
+    } else if (normalizedType === 'sports-videos' || normalizedType === 'sports' || normalizedType === 'sport') {
+      model = SportsVideo;
+    }
+
+    if (!model) {
+      return res.status(400).json({ message: 'Invalid content type' });
+    }
+
+    const updated = await model.findByIdAndUpdate(
+      id,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+    if (!updated) {
+      return res.status(404).json({ message: 'Content not found' });
+    }
+    res.json({ success: true, views: updated.views });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

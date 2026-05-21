@@ -17,7 +17,9 @@ const MenuSettings = () => {
   shows: 'ON',
   movies: 'ON',
   sports: 'ON',
-  liveTv: 'ON'
+  liveTv: 'ON',
+  shortFilms: 'ON',
+  webSeries: 'ON'
  });
 
  useEffect(() => {
@@ -28,7 +30,7 @@ const MenuSettings = () => {
   try {
    const response = await fetch(API_URL);
    const data = await response.json();
-   setFormData(data);
+   setFormData(prev => ({ ...prev, ...data }));
   } catch (err) {
    console.error('Error fetching settings:', err);
   } finally {
@@ -122,6 +124,22 @@ const MenuSettings = () => {
      <div className="form-row-full-v">
       <label>Live TV</label>
       <select name="liveTv" value={formData.liveTv} onChange={handleChange}>
+       <option value="ON">ON</option>
+       <option value="OFF">OFF</option>
+      </select>
+     </div>
+
+     <div className="form-row-full-v">
+      <label>Short Films</label>
+      <select name="shortFilms" value={formData.shortFilms} onChange={handleChange}>
+       <option value="ON">ON</option>
+       <option value="OFF">OFF</option>
+      </select>
+     </div>
+
+     <div className="form-row-full-v">
+      <label>Web Series</label>
+      <select name="webSeries" value={formData.webSeries} onChange={handleChange}>
        <option value="ON">ON</option>
        <option value="OFF">OFF</option>
       </select>

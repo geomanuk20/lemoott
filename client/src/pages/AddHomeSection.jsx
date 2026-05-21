@@ -10,6 +10,7 @@ const AddHomeSection = () => {
   title: '',
   sectionType: '',
   status: 'Active',
+  limit: 10,
   order: 0
  });
 
@@ -63,13 +64,45 @@ const AddHomeSection = () => {
     <div className="form-row-custom">
      <label>Type</label>
      <div className="input-col">
-      <select name="sectionType" value={formData.sectionType} onChange={handleChange}>
-       <option value="">Select</option>
-       <option value="Movie">Movie</option>
-       <option value="Shows">Shows</option>
-       <option value="Sports">Sports</option>
-       <option value="Live TV">Live TV</option>
-      </select>
+       <select name="sectionType" value={formData.sectionType} onChange={handleChange}>
+        <option value="">Select</option>
+        <option value="Movie">Movie</option>
+        <option value="New Release">New Release</option>
+        <option value="Short Film">Short Film</option>
+        <option value="Short Web Series">Short Web Series</option>
+        <option value="Shows">Shows</option>
+        <option value="Sports">Sports</option>
+        <option value="Live TV">Live TV</option>
+       </select>
+     </div>
+    </div>
+
+    <div className="form-row-custom">
+     <label>Limit (Items Count)</label>
+     <div className="input-col">
+      <input 
+       type="number" 
+       name="limit" 
+       value={formData.limit} 
+       onChange={(e) => setFormData(prev => ({ ...prev, limit: parseInt(e.target.value) || 10 }))}
+       min={1}
+       max={100}
+       required 
+      />
+     </div>
+    </div>
+
+    <div className="form-row-custom">
+     <label>Display Order</label>
+     <div className="input-col">
+      <input 
+       type="number" 
+       name="order" 
+       value={formData.order} 
+       onChange={(e) => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
+       min={0}
+       required 
+      />
      </div>
     </div>
 

@@ -21,11 +21,20 @@ const newReleaseSchema = new mongoose.Schema({
   videoType: { type: String, default: 'Local' },
   videoQuality: { type: String, default: '8K Ultra HD' },
   videoFile: String,
+  videoFile480: String,
+  videoFile720: String,
+  videoFile1080: String,
+  subtitlesActive: { type: String, default: 'Inactive' },
+  subtitles: [{
+    language: String,
+    url: String
+  }],
   status: { type: String, default: 'Active' },
   seoTitle: String,
   metaDescription: String,
   keywords: String,
   imdbId: String,
+  views: { type: Number, default: 0 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('NewRelease', newReleaseSchema);

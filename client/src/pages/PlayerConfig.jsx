@@ -9,7 +9,7 @@ import Loader from '../components/Loader';
 const API_URL = 'http://localhost:5001/api/player-settings';
 
 const PlayerConfig = () => {
- const [loading, setLoading] = useState(false);
+ const [loading, setLoading] = useState(true);
  const [saving, setSaving] = useState(false);
  const [notification, setNotification] = useState(null);
  
@@ -21,7 +21,7 @@ const PlayerConfig = () => {
   watermark: 'YES',
   watermarkLogo: 'upload/player_logo.png',
   watermarkPosition: 'Top Right',
-  watermarkUrl: '#'
+  watermarkUrl: '#',
  });
 
  useEffect(() => {
@@ -170,6 +170,8 @@ const PlayerConfig = () => {
         <option value="NO">NO</option>
        </select>
       </div>
+
+
      </div>
 
      {/* Right Column: Player Watermark */}

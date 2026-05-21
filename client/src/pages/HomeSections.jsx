@@ -6,6 +6,7 @@ import {
  X, 
  AlertTriangle, 
  CheckCircle2, 
+ XCircle,
  Loader2,
  Layers
 } from 'lucide-react';
@@ -26,7 +27,9 @@ const HomeSections = () => {
  const [formData, setFormData] = useState({
   title: '',
   sectionType: '',
-  status: 'Active'
+  status: 'Active',
+  limit: 10,
+  order: 0
  });
 
  const fetchSections = async () => {
@@ -71,7 +74,7 @@ const HomeSections = () => {
 
  const handleAdd = () => {
   setEditingId(null);
-  setFormData({ title: '', sectionType: '', status: 'Active' });
+  setFormData({ title: '', sectionType: '', status: 'Active', limit: 10, order: sections.length });
   setIsModalOpen(true);
  };
 
@@ -80,7 +83,9 @@ const HomeSections = () => {
   setFormData({
    title: section.title,
    sectionType: section.sectionType,
-   status: section.status
+   status: section.status,
+   limit: section.limit !== undefined ? section.limit : 10,
+   order: section.order !== undefined ? section.order : 0
   });
   setIsModalOpen(true);
  };
@@ -137,18 +142,18 @@ const HomeSections = () => {
 
  return (
   <div className="language-session-container">
-   {notification && (
-    <div className="custom-alert-box">
-     <div className="alert-content">
-      {notification.type === 'success' ? (
-       <CheckCircle2 size={42} color="#00c853" strokeWidth={2.5} />
-      ) : (
-       <XCircle size={42} color="#ff4d4d" strokeWidth={2.5} />
-      )}
-      <span className="alert-text">{notification.message}</span>
+    {notification && (
+     <div className={`custom-alert-box ${notification.type}`}>
+      <div className="alert-content">
+       {notification.type === 'success' ? (
+        <CheckCircle2 size={20} strokeWidth={2.5} />
+       ) : (
+        <XCircle size={20} strokeWidth={2.5} />
+       )}
+       <span className="alert-text">{notification.message}</span>
+      </div>
      </div>
-    </div>
-   )}
+    )}
 
    <div className="language-inner-box">
     <div className="action-bar">
@@ -228,24 +233,50 @@ const HomeSections = () => {
          value={formData.sectionType}
          onChange={(e) => setFormData({...formData, sectionType: e.target.value})}
         >
-         <option value="">Select</option>
-         <option value="Movie">Movie</option>
-         <option value="Shows">Shows</option>
-         <option value="Sports">Sports</option>
-         <option value="Live TV">Live TV</option>
-        </select>
+          <option value="">Select</option>
+          <option value="Movie">Movie</option>
+          <option value="New Release">New Release</option>
+          <option value="Short Film">Short Film</option>
+          <option value="Short Web Series">Short Web Series</option>
+          <option value="Shows">Shows</option>
+          <option value="Sports">Sports</option>
+          <option value="Live TV">Live TV</option>
+         </select>
        </div>
 
-       <div className="form-group-refactored">
-        <label>Status</label>
-        <select 
-         value={formData.status}
-         onChange={(e) => setFormData({...formData, status: e.target.value})}
-        >
-         <option value="Active">Active</option>
-         <option value="Inactive">Inactive</option>
-        </select>
-       </div>
+        <div className="form-group-refactored">
+         <label>Limit (Items Count)</label>
+         <input 
+          type="number" 
+          value={formData.limit}
+          onChange={(e) => setFormData({...formData, limit: parseInt(e.target.value) || 10})}
+          min={1}
+          max={100}
+          required
+         />
+        </div>
+
+        <div className="form-group-refactored">
+         <label>Display Order</label>
+         <input 
+          type="number" 
+          value={formData.order}
+          onChange={(e) => setFormData({...formData, order: parseInt(e.target.value) || 0})}
+          min={0}
+          required
+         />
+        </div>
+
+        <div className="form-group-refactored">
+         <label>Status</label>
+         <select 
+          value={formData.status}
+          onChange={(e) => setFormData({...formData, status: e.target.value})}
+         >
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+         </select>
+        </div>
 
        <div className="modal-footer-refactored">
         <button type="submit" className="save-btn-refactored">Save</button>
@@ -323,10 +354,43 @@ const HomeSections = () => {
     .cancel-btn-delete { flex: 1; background: #333; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; }
     .confirm-btn-delete { flex: 1; background: #ff4d4d; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; }
 
-    .custom-alert-box { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 25px 50px; z-index: 5000; box-shadow: 0 10px 40px rgba(0,0,0,0.5); animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    .alert-content { display: flex; flex-direction: column; align-items: center; gap: 15px; }
-    .alert-text { color: #fff; font-size: 1.1rem; font-weight: 700; text-align: center; }
-    @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+    .custom-alert-box { 
+     position: fixed; 
+     bottom: 40px; 
+     left: 50%; 
+     transform: translateX(-50%); 
+     background: #b3d332; 
+     color: #fff; 
+     padding: 12px 25px; 
+     border-radius: 50px; 
+     display: flex; 
+     align-items: center; 
+     justify-content: center;
+     z-index: 5000; 
+     box-shadow: 0 15px 30px rgba(0,0,0,0.4); 
+     animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+     border: 1px solid rgba(255,255,255,0.25);
+    }
+    .custom-alert-box.error { 
+     background: #ff4d4d; 
+    }
+    .alert-content { 
+     display: flex; 
+     align-items: center; 
+     gap: 12px; 
+    }
+    .alert-text { 
+     color: #fff; 
+     font-size: 1rem; 
+     font-weight: 700; 
+     text-align: center; 
+     letter-spacing: -0.2px;
+    }
+    
+    @keyframes slideUp { 
+     from { transform: translate(-50%, 20px); opacity: 0; } 
+     to { transform: translate(-50%, 0); opacity: 1; } 
+    }
 
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes modalIn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }

@@ -4,7 +4,7 @@ import { Editor } from '@tinymce/tinymce-react';
 import { ArrowLeft, Save, Upload, Info, Image as ImageIcon, Video, Search, Globe, FileText, X, ChevronDown } from 'lucide-react';
 import { uploadToCloudinary } from '../utils/upload';
 
-const AddMovie = () => {
+const AddShortFilm = () => {
  const navigate = useNavigate();
  const thumbnailInputRef = useRef(null);
  const posterInputRef = useRef(null);
@@ -27,11 +27,12 @@ const AddMovie = () => {
  const [formData, setFormData] = useState({
   imdbId: '',
   title: '',
+  contentType: 'Short Film', // Strictly set to Short Film
   description: '',
   upcoming: 'No',
   access: 'Paid',
   language: 'Select Language',
-  genres: [],
+  genres: ['Short Film'], // Pre-populated with Short Film genre
   actors: [],
   directors: [],
   imdbRating: '',
@@ -151,18 +152,18 @@ const AddMovie = () => {
    });
    
    if (response.ok) {
-    navigate('/admin/movies');
+    navigate('/admin/short-films');
    } else {
     const errorText = await response.text();
     try {
      const errorData = JSON.parse(errorText);
-     alert(`Failed to save movie: ${errorData.message}`);
+     alert(`Failed to save short film: ${errorData.message}`);
     } catch (e) {
-     alert(`Failed to save movie. Server error.`);
+     alert(`Failed to save short film. Server error.`);
     }
    }
   } catch (err) {
-   console.error('Error saving movie:', err);
+   console.error('Error saving short film:', err);
    alert('An error occurred while saving.');
   } finally {
    setLoading(false);
@@ -172,7 +173,7 @@ const AddMovie = () => {
  return (
   <div className="add-movie-page">
    <div className="top-nav">
-    <button className="back-btn" onClick={() => navigate('/admin/movies')}>
+    <button className="back-btn" onClick={() => navigate('/admin/short-films')}>
      <ArrowLeft size={18} />
      <span>Back</span>
     </button>
@@ -195,11 +196,11 @@ const AddMovie = () => {
 
    <form onSubmit={handleSave} className="movie-form">
     <div className="form-sections-wrapper">
-     <h2 className="section-title">Movie Info</h2>
+     <h2 className="section-title">Short Film Info</h2>
      <div className="form-columns">
       <div className="form-column">
        <div className="form-group">
-        <label>Movie Title</label>
+        <label>Short Film Title</label>
         <input type="text" name="title" value={formData.title} onChange={handleChange} required />
        </div>
        <div className="form-group">
@@ -362,7 +363,7 @@ const AddMovie = () => {
         </div>
         <div className="form-group half">
          <label>Duration</label>
-         <input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="2h 15m" />
+         <input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="25m" />
         </div>
        </div>
        <div className="form-group">
@@ -614,4 +615,4 @@ const AddMovie = () => {
  );
 };
 
-export default AddMovie;
+export default AddShortFilm;

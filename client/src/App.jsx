@@ -10,6 +10,9 @@ import Languages from './pages/Languages';
 import Genres from './pages/Genres';
 import Movies from './pages/Movies';
 import AddMovie from './pages/AddMovie';
+import ShortFilms from './pages/ShortFilms';
+import AddShortFilm from './pages/AddShortFilm';
+import EditShortFilm from './pages/EditShortFilm';
 import NewRelease from './pages/NewRelease';
 import AddNewRelease from './pages/AddNewRelease';
 import EditNewRelease from './pages/EditNewRelease';
@@ -18,6 +21,9 @@ import EditEpisode from './pages/EditEpisode';
 import Shows from './pages/Shows';
 import AddShow from './pages/AddShow';
 import EditShow from './pages/EditShow';
+import ShortWebSeries from './pages/ShortWebSeries';
+import AddShortWebSeries from './pages/AddShortWebSeries';
+import EditShortWebSeries from './pages/EditShortWebSeries';
 import { syncFavicon } from './utils/branding';
 import Seasons from './pages/Seasons';
 import AddSeason from './pages/AddSeason';
@@ -90,6 +96,8 @@ import FrontendPage from './pages/FrontendPage';
 import FrontendSubscription from './pages/FrontendSubscription';
 import FrontendDetails from './pages/FrontendDetails';
 import FrontendViewAll from './pages/FrontendViewAll';
+import FrontendShortFilms from './pages/FrontendShortFilms';
+import FrontendWebSeries from './pages/FrontendWebSeries';
 
 
 
@@ -159,6 +167,8 @@ function App() {
         <Route path="/shows" element={<FrontendShows />} />
         <Route path="/live-tv" element={<FrontendLiveTV />} />
         <Route path="/sports" element={<FrontendSports />} />
+        <Route path="/short-films" element={<FrontendShortFilms />} />
+        <Route path="/web-series" element={<FrontendWebSeries />} />
         <Route path="/user/profile" element={<FrontendProfile />} />
         <Route path="/login" element={<FrontendLogin />} />
         <Route path="/register" element={<FrontendLogin type="register" />} />
@@ -196,6 +206,18 @@ function App() {
           <Route path="movies" element={<Movies />} />
           <Route path="movies/add" element={<AddMovie />} />
           <Route path="movies/edit/:id" element={<EditMovie />} />
+          <Route path="short-films" element={<ShortFilms />} />
+          <Route path="short-films/add" element={<AddShortFilm />} />
+          <Route path="short-films/edit/:id" element={<EditShortFilm />} />
+          <Route path="short-web-series" element={<ShortWebSeries />} />
+          <Route path="short-web-series/add" element={<AddShortWebSeries />} />
+          <Route path="short-web-series/edit/:id" element={<EditShortWebSeries />} />
+          <Route path="short-web-series/seasons" element={<Seasons />} />
+          <Route path="short-web-series/seasons/add" element={<AddSeason />} />
+          <Route path="short-web-series/seasons/edit/:id" element={<EditSeason />} />
+          <Route path="short-web-series/episodes" element={<Episodes />} />
+          <Route path="short-web-series/episodes/add" element={<AddEpisode />} />
+          <Route path="short-web-series/episodes/edit/:id" element={<EditEpisode />} />
           <Route path="new-release" element={<NewRelease />} />
           <Route path="new-release/add" element={<AddNewRelease />} />
           <Route path="new-release/edit/:id" element={<EditNewRelease />} />

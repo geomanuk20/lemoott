@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, Tv, List } from 'lucide-react';
+import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, List } from 'lucide-react';
 import Loader from '../components/Loader';
 import { formatImageUrl } from '../utils/image';
 
-const Shows = () => {
+const ShortWebSeries = () => {
  const navigate = useNavigate();
  const location = useLocation();
  const [shows, setShows] = useState([]);
- const [loading, setLoading] = useState(false);
+ const [loading, setLoading] = useState(true);
  const [searchTerm, setSearchTerm] = useState('');
  const [selectedShows, setSelectedShows] = useState([]);
  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
@@ -30,11 +30,11 @@ const Shows = () => {
  useEffect(() => {
   const fetchShows = async () => {
    try {
-    const response = await fetch(`${API_URL}?contentType=TV Show`);
+    const response = await fetch(`${API_URL}?contentType=Short Web Series`);
     const data = await response.json();
     setShows(data);
    } catch (err) {
-    console.error('Error fetching shows:', err);
+    console.error('Error fetching short web series:', err);
    } finally {
     setLoading(false);
    }
@@ -84,7 +84,7 @@ const Shows = () => {
    });
    if (response.ok) {
     setShows(prev => prev.map(s => s._id === show._id ? { ...s, status: newStatus } : s));
-    showNotification('Show status updated');
+    showNotification('Status updated successfully');
    }
   } catch (err) {
    console.error('Error toggling status:', err);
@@ -124,7 +124,7 @@ const Shows = () => {
    setShows(prev => prev.map(s => selectedShows.includes(s._id) ? { ...s, status } : s));
    setSelectedShows([]);
    setIsActionMenuOpen(false);
-   showNotification(`Selected shows set to ${status}`);
+   showNotification(`Selected series set to ${status}`);
   } catch (err) {
    console.error('Error in bulk status change:', err);
   }
@@ -153,14 +153,14 @@ const Shows = () => {
     if (response.ok) {
      setShows(prev => prev.filter(s => s._id !== deletingId));
      setIsDeleteModalOpen(false);
-     showNotification('Show deleted successfully');
+     showNotification('Short Web Series deleted successfully');
     }
    } else {
     await Promise.all(selectedShows.map(id => fetch(`${API_URL}/${id}`, { method: 'DELETE' })));
     setShows(prev => prev.filter(s => !selectedShows.includes(s._id)));
     setSelectedShows([]);
     setIsDeleteModalOpen(false);
-    showNotification('Selected shows deleted');
+    showNotification('Selected series deleted');
    }
   } catch (err) {
    console.error('Error deleting show:', err);
@@ -175,7 +175,7 @@ const Shows = () => {
       {notification.type === 'success' ? (
        <CheckCircle2 size={42} color="#00c853" strokeWidth={2.5} />
       ) : (
-       <XCircle size={42} color="#ff4d4d" strokeWidth={2.5} />
+       <X size={42} color="#ff4d4d" strokeWidth={2.5} />
       )}
       <span className="alert-text">{notification.message}</span>
      </div>
@@ -194,9 +194,9 @@ const Shows = () => {
       <Search size={20} className="search-icon" />
      </div>
     </div>
-    <button className="add-btn" onClick={() => navigate('/admin/tv-shows/shows/add')}>
+    <button className="add-btn" onClick={() => navigate('/admin/short-web-series/add')}>
      <Plus size={20} strokeWidth={3} />
-     <span>Add Show</span>
+     <span>Add Short Web Series</span>
     </button>
    </div>
 
@@ -319,8 +319,8 @@ const Shows = () => {
         <p className="item-subtitle">{Array.isArray(show.genres) ? show.genres.join(', ') : ''}</p>
         <div className="card-controls">
          <div className="action-icons">
-          <button className="circle-icon episodes" onClick={() => navigate(`/admin/tv-shows/episodes?show=${show._id}`)} title="View Episodes"><List size={16} /></button>
-          <button className="circle-icon edit" onClick={() => navigate(`/admin/tv-shows/shows/edit/${show._id}`)}><Edit size={16} /></button>
+          <button className="circle-icon episodes" onClick={() => navigate(`/admin/short-web-series/episodes?show=${show._id}`)} title="View Episodes"><List size={16} /></button>
+          <button className="circle-icon edit" onClick={() => navigate(`/admin/short-web-series/edit/${show._id}`)}><Edit size={16} /></button>
           <button className="circle-icon delete" onClick={() => confirmDelete(show._id)}><X size={18} strokeWidth={3} /></button>
          </div>
          <label className="switch">
@@ -346,7 +346,7 @@ const Shows = () => {
        <AlertTriangle size={65} color="#ff4d4d" strokeWidth={1.5} />
       </div>
       <h2>Are you sure?</h2>
-      <p>{deleteMode === 'bulk' ? `You want to delete these ${selectedShows.length} shows?` : 'You want to delete this show?'} This action cannot be undone.</p>
+      <p>{deleteMode === 'bulk' ? `You want to delete these ${selectedShows.length} series?` : 'You want to delete this series?'} This action cannot be undone.</p>
       <div className="delete-modal-footer">
        <button className="cancel-btn" onClick={() => { setIsDeleteModalOpen(false); setDeletingId(null); }}>Cancel</button>
        <button className="confirm-btn" onClick={executeDelete}>Delete</button>
@@ -431,10 +431,9 @@ const Shows = () => {
     .alert-content { display: flex; flex-direction: column; align-items: center; gap: 15px; }
     .alert-text { color: #fff; font-size: 1.1rem; font-weight: 700; text-align: center; }
     @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
-
    ` }} />
   </div>
  );
 };
 
-export default Shows;
+export default ShortWebSeries;

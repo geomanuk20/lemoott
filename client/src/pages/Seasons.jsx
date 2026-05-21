@@ -160,124 +160,147 @@ const Seasons = () => {
   }
  };
 
+  const isShortPath = window.location.pathname.includes('/short-web-series');
 
- const filteredSeasons = seasons.filter(s => 
-  s.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
-  (!selectedShow || s.showId === selectedShow)
- );
+  const filteredShows = shows.filter(show => {
+    if (isShortPath) {
+      return show.contentType === 'Short Web Series';
+    } else {
+      return show.contentType === 'TV Show' || !show.contentType;
+    }
+  });
 
- return (
-  <div className="seasons-page">
-   {notification && (
-    <div className="custom-alert-box">
-     <div className="alert-content">
-      {notification.type === 'success' ? (
-       <CheckCircle2 size={42} color="#00c853" strokeWidth={2.5} />
-      ) : (
-       <XCircle size={42} color="#ff4d4d" strokeWidth={2.5} />
-      )}
-      <span className="alert-text">{notification.message}</span>
+  const getShowName = (season) => {
+    const showObj = shows.find(show => show._id === season.showId);
+    return showObj ? showObj.title : (season.showName || 'Unknown Show');
+  };
+
+  const filteredSeasons = seasons.filter(s => {
+    const matchesSearch = s.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSelectedShow = !selectedShow || s.showId === selectedShow;
+
+    const showObj = shows.find(show => show._id === s.showId);
+    if (showObj) {
+      const isShortShow = showObj.contentType === 'Short Web Series';
+      if (isShortPath && !isShortShow) return false;
+      if (!isShortPath && isShortShow) return false;
+    }
+
+    return matchesSearch && matchesSelectedShow;
+  });
+
+  return (
+   <div className="seasons-page">
+    {notification && (
+     <div className="custom-alert-box">
+      <div className="alert-content">
+       {notification.type === 'success' ? (
+        <CheckCircle2 size={42} color="#00c853" strokeWidth={2.5} />
+       ) : (
+        <XCircle size={42} color="#ff4d4d" strokeWidth={2.5} />
+       )}
+       <span className="alert-text">{notification.message}</span>
+      </div>
      </div>
-    </div>
-   )}
+    )}
 
-   <div className="page-header">
-    <div className="search-wrapper">
-     <div className="search-bar">
-      <input 
-       type="text" 
-       placeholder="Search By Title..." 
-       value={searchTerm}
-       onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <Search size={20} className="search-icon" />
+    <div className="page-header">
+     <div className="search-wrapper">
+      <div className="search-bar">
+       <input 
+        type="text" 
+        placeholder="Search By Title..." 
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+       />
+       <Search size={20} className="search-icon" />
+      </div>
      </div>
+     <button className="add-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/seasons/add' : '/admin/tv-shows/seasons/add')}>
+      <Plus size={20} strokeWidth={3} />
+      <span>Add Season</span>
+     </button>
     </div>
-    <button className="add-btn" onClick={() => navigate('/admin/tv-shows/seasons/add')}>
-     <Plus size={20} strokeWidth={3} />
-     <span>Add Season</span>
-    </button>
-   </div>
 
-   <div className="filters-bar">
-    <div className="filter-group">
-     <select 
-      className="custom-select-box" 
-      value={selectedShow} 
-      onChange={(e) => setSelectedShow(e.target.value)}
-     >
-      <option value="">Filter by Shows</option>
-      {shows.map(show => (
-       <option key={show._id} value={show._id}>{show.title}</option>
-      ))}
-     </select>
-    </div>
-    
-    <div className="right-controls">
-     <label className="select-all">
-      <input 
-       type="checkbox" 
-       checked={seasons.length > 0 && selectedSeasons.length === seasons.length}
-       onChange={handleSelectAll}
-      />
-      <span>Select All</span>
-     </label>
-     <div className="action-dropdown-container">
-      <button className="action-btn" onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}>
-       <span>Action</span>
-       <ChevronDown size={16} />
-      </button>
-      {isActionMenuOpen && (
-       <div className="action-dropdown-menu">
-        <button onClick={() => handleBulkStatusChange('Active')}>Active</button>
-        <button onClick={() => handleBulkStatusChange('Inactive')}>Inactive</button>
-        <button className="delete-option" onClick={handleBulkDelete}>Delete</button>
-       </div>
-      )}
+    <div className="filters-bar">
+     <div className="filter-group">
+      <select 
+       className="custom-select-box" 
+       value={selectedShow} 
+       onChange={(e) => setSelectedShow(e.target.value)}
+      >
+       <option value="">Filter by Shows</option>
+       {filteredShows.map(show => (
+        <option key={show._id} value={show._id}>{show.title}</option>
+       ))}
+      </select>
      </div>
-    </div>
-   </div>
-
-   {loading ? (
-    <div className="loader-container">
-     <Loader size="small" inline={true} />
-    </div>
-   ) : (
-    <div className="grid-container">
-     {filteredSeasons.length > 0 ? (
-      filteredSeasons.map((season) => (
-       <div key={season._id} className="item-card">
-        <div className="poster-wrapper">
-         <input 
-          type="checkbox" 
-          className="item-checkbox" 
-          checked={selectedSeasons.includes(season._id)}
-          onChange={() => handleSelectSeason(season._id)}
-         />
-         <img src={formatImageUrl(season, 'poster') || 'https://via.placeholder.com/300x450'} alt={season.title} className="poster-img" />
+     
+     <div className="right-controls">
+      <label className="select-all">
+       <input 
+        type="checkbox" 
+        checked={seasons.length > 0 && selectedSeasons.length === seasons.length}
+        onChange={handleSelectAll}
+       />
+       <span>Select All</span>
+      </label>
+      <div className="action-dropdown-container">
+       <button className="action-btn" onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}>
+        <span>Action</span>
+        <ChevronDown size={16} />
+       </button>
+       {isActionMenuOpen && (
+        <div className="action-dropdown-menu">
+         <button onClick={() => handleBulkStatusChange('Active')}>Active</button>
+         <button onClick={() => handleBulkStatusChange('Inactive')}>Inactive</button>
+         <button className="delete-option" onClick={handleBulkDelete}>Delete</button>
         </div>
-        <div className="item-info">
-         <h3 className="item-title">{season.title}</h3>
-         <p className="item-subtitle">{season.showName}</p>
-         <div className="card-controls">
-          <div className="action-icons">
-           <button className="circle-icon edit" onClick={() => navigate(`/admin/tv-shows/seasons/edit/${season._id}`)}><Edit size={16} /></button>
-           <button className="circle-icon duplicate" onClick={() => duplicateSeason(season)} title="Duplicate"><Copy size={16} /></button>
-           <button className="circle-icon delete" onClick={() => confirmDelete(season._id)}><X size={18} strokeWidth={3} /></button>
+       )}
+      </div>
+     </div>
+    </div>
+
+    {loading ? (
+     <div className="loader-container">
+      <Loader size="small" inline={true} />
+     </div>
+    ) : (
+     <div className="grid-container">
+      {filteredSeasons.length > 0 ? (
+       filteredSeasons.map((season) => (
+        <div key={season._id} className="item-card">
+         <div className="poster-wrapper">
+          <input 
+           type="checkbox" 
+           className="item-checkbox" 
+           checked={selectedSeasons.includes(season._id)}
+           onChange={() => handleSelectSeason(season._id)}
+          />
+          <img src={formatImageUrl(season, 'poster') || 'https://via.placeholder.com/300x450'} alt={season.title} className="poster-img" />
+         </div>
+         <div className="item-info">
+          <h3 className="item-title">{season.title}</h3>
+          <p className="item-subtitle">{getShowName(season)}</p>
+          <div className="card-controls">
+           <div className="action-icons">
+            <button className="circle-icon edit" onClick={() => navigate(isShortPath ? `/admin/short-web-series/seasons/edit/${season._id}` : `/admin/tv-shows/seasons/edit/${season._id}`)}><Edit size={16} /></button>
+            <button className="circle-icon duplicate" onClick={() => duplicateSeason(season)} title="Duplicate"><Copy size={16} /></button>
+            <button className="circle-icon delete" onClick={() => confirmDelete(season._id)}><X size={18} strokeWidth={3} /></button>
+           </div>
+           <label className="switch">
+            <input 
+             type="checkbox" 
+             checked={season.status === 'Active'} 
+             onChange={() => toggleStatus(season)}
+            />
+            <span className="slider"></span>
+           </label>
           </div>
-          <label className="switch">
-           <input 
-            type="checkbox" 
-            checked={season.status === 'Active'} 
-            onChange={() => toggleStatus(season)}
-           />
-           <span className="slider"></span>
-          </label>
          </div>
         </div>
-       </div>
-      ))
-     ) : (
+       ))
+      ) : (
       <div className="no-items">
        <Film size={60} color="#333" />
        <p>No seasons found</p>

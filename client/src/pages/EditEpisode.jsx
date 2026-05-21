@@ -9,6 +9,10 @@ const EditEpisode = () => {
  const { id } = useParams();
  const navigate = useNavigate();
  const posterInputRef = useRef(null);
+ const videoInputRef = useRef(null);
+ const video480InputRef = useRef(null);
+ const video720InputRef = useRef(null);
+ const video1080InputRef = useRef(null);
  
  const [loading, setLoading] = useState(false);
  const [initialLoading, setInitialLoading] = useState(true);
@@ -27,7 +31,7 @@ const EditEpisode = () => {
   status: 'Active',
   poster: '',
   videoType: 'Local',
-  videoQuality: 'Active',
+  videoQuality: '8K Ultra HD',
   videoFile: '',
   videoFile480: '',
   videoFile720: '',
@@ -59,7 +63,17 @@ const EditEpisode = () => {
     
     setShows(showsData);
     setSeasons(seasonsData);
-    setFormData(episodeData);
+    
+    const cleanedEpisodeData = { ...episodeData };
+    if (cleanedEpisodeData.showId && typeof cleanedEpisodeData.showId === 'object') {
+      cleanedEpisodeData.showId = cleanedEpisodeData.showId._id || cleanedEpisodeData.showId.id;
+    }
+    if (cleanedEpisodeData.seasonId && typeof cleanedEpisodeData.seasonId === 'object') {
+      cleanedEpisodeData.seasonId = cleanedEpisodeData.seasonId._id || cleanedEpisodeData.seasonId.id;
+    } else if (!cleanedEpisodeData.seasonId) {
+      cleanedEpisodeData.seasonId = '';
+    }
+    setFormData(cleanedEpisodeData);
    } catch (err) {
     console.error('Error fetching data:', err);
    } finally {
@@ -68,6 +82,8 @@ const EditEpisode = () => {
   };
   fetchData();
  }, [id]);
+
+ const isShortPath = window.location.pathname.includes('/short-web-series');
 
  const handleChange = (e) => {
   const { name, value } = e.target;
@@ -96,17 +112,30 @@ const EditEpisode = () => {
   e.preventDefault();
   setLoading(true);
   try {
+   const payload = { ...formData };
+    if (!payload.seasonId || isShortPath) {
+     payload.seasonId = null;
+    } else if (typeof payload.seasonId === 'object') {
+     payload.seasonId = payload.seasonId._id || payload.seasonId.id;
+    }
+   if (payload.showId && typeof payload.showId === 'object') {
+    payload.showId = payload.showId._id || payload.showId.id;
+   }
    const response = await fetch(`http://localhost:5001/api/episodes/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(formData)
+    body: JSON.stringify(payload)
    });
    if (response.ok) {
     alert('Episode updated successfully!');
-    navigate('/admin/tv-shows/episodes');
+    navigate(isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes');
+   } else {
+    const errData = await response.json();
+    alert('Failed to update episode: ' + (errData.message || response.statusText));
    }
   } catch (err) {
    console.error('Error updating episode:', err);
+   alert('Error updating episode: ' + err.message);
   } finally {
    setLoading(false);
   }
@@ -117,7 +146,7 @@ const EditEpisode = () => {
  return (
   <div className="add-episode-page">
    <div className="top-nav">
-    <button className="back-btn" onClick={() => navigate(-1)}>
+    <button className="back-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes')}>
      <ArrowLeft size={20} color="#b3d332" strokeWidth={3} />
      <span>Back</span>
     </button>
@@ -157,16 +186,6 @@ const EditEpisode = () => {
       </div>
 
       <div className="form-group">
-       <label>Video Upload Type</label>
-       <select name="videoType" value={formData.videoType} onChange={handleChange}>
-        <option value="Local">Local</option>
-        <option value="URL">URL</option>
-        <option value="HLS/m3u8 / MPEG-DASH / YouTube / Vimeo">HLS/m3u8 / MPEG-DASH / YouTube / Vimeo</option>
-        <option value="Embed Code">Embed Code</option>
-       </select>
-      </div>
-
-      <div className="form-group">
        <label>Access</label>
        <select name="access" value={formData.access} onChange={handleChange}>
         <option value="Paid">Paid</option>
@@ -175,20 +194,25 @@ const EditEpisode = () => {
       </div>
 
       <div className="form-group">
-       <label>Shows*</label>
-       <select name="showId" value={formData.showId} onChange={handleChange} required>
-        <option value="">Select Show</option>
-        {shows.map(s => <option key={s._id} value={s._id}>{s.title}</option>)}
-       </select>
-      </div>
+        <label>Shows*</label>
+        <select name="showId" value={formData.showId} onChange={handleChange} required>
+         <option value="">Select Show</option>
+         {shows
+           .filter(show => isShortPath ? show.contentType === 'Short Web Series' : (show.contentType === 'TV Show' || !show.contentType))
+           .map(s => <option key={s._id} value={s._id}>{s.title}</option>)
+         }
+        </select>
+       </div>
 
-      <div className="form-group">
-       <label>Seasons*</label>
-       <select name="seasonId" value={formData.seasonId} onChange={handleChange} required>
-        <option value="">Select Season</option>
-        {seasons.filter(s => s.showId === formData.showId).map(s => <option key={s._id} value={s._id}>{s.title}</option>)}
-       </select>
-      </div>
+       {!isShortPath && (
+         <div className="form-group">
+          <label>Seasons</label>
+          <select name="seasonId" value={formData.seasonId} onChange={handleChange}>
+           <option value="">Select Season (Optional)</option>
+          {seasons.filter(s => s.showId === formData.showId).map(s => <option key={s._id} value={s._id}>{s.title}</option>)}
+         </select>
+        </div>
+       )}
 
       <div className="form-group">
        <label>Status</label>
@@ -232,16 +256,13 @@ const EditEpisode = () => {
          <span className="sub-label">(For Local and URL)</span>
         </div>
         <div className="video-source-input">
-         <div className="custom-radio-group">
-          <label className="radio-item">
-           <input type="radio" name="videoQuality" value="Active" checked={formData.videoQuality === 'Active'} onChange={handleChange} />
-           <span className="radio-dot"></span>
-          </label>
-          <label className="radio-item ml-30">
-           <input type="radio" name="videoQuality" value="Inactive" checked={formData.videoQuality === 'Inactive'} onChange={handleChange} />
-           <span className="radio-dot"></span>
-          </label>
-         </div>
+         <select name="videoQuality" value={formData.videoQuality || '8K Ultra HD'} onChange={handleChange} style={{ background: '#333', border: '1px solid #444', padding: '12px', color: '#fff', borderRadius: '4px', outline: 'none', width: '100%' }}>
+          <option value="8K Ultra HD">8K Ultra HD</option>
+          <option value="4K Ultra HD">4K Ultra HD</option>
+          <option value="Full HD">Full HD</option>
+          <option value="HD">HD</option>
+          <option value="SD">SD</option>
+         </select>
         </div>
        </div>
 
@@ -261,7 +282,8 @@ const EditEpisode = () => {
           <div className="video-source-input">
            <div className="file-input-group">
             <input type="text" value={formData.videoFile} readOnly placeholder="No file selected" />
-            <button type="button" className="select-btn">Select</button>
+            <button type="button" onClick={() => videoInputRef.current.click()} className="select-btn">Select</button>
+            <input type="file" ref={videoInputRef} hidden onChange={(e) => handleFileChange(e, 'videoFile')} />
            </div>
           </div>
          </div>
@@ -270,7 +292,8 @@ const EditEpisode = () => {
           <div className="video-source-input">
            <div className="file-input-group">
             <input type="text" value={formData.videoFile480} readOnly placeholder="No file selected" />
-            <button type="button" className="select-btn">Select</button>
+            <button type="button" onClick={() => video480InputRef.current.click()} className="select-btn">Select</button>
+            <input type="file" ref={video480InputRef} hidden onChange={(e) => handleFileChange(e, 'videoFile480')} />
            </div>
           </div>
          </div>
@@ -279,7 +302,8 @@ const EditEpisode = () => {
           <div className="video-source-input">
            <div className="file-input-group">
             <input type="text" value={formData.videoFile720} readOnly placeholder="No file selected" />
-            <button type="button" className="select-btn">Select</button>
+            <button type="button" onClick={() => video720InputRef.current.click()} className="select-btn">Select</button>
+            <input type="file" ref={video720InputRef} hidden onChange={(e) => handleFileChange(e, 'videoFile720')} />
            </div>
           </div>
          </div>
@@ -288,7 +312,8 @@ const EditEpisode = () => {
           <div className="video-source-input">
            <div className="file-input-group">
             <input type="text" value={formData.videoFile1080} readOnly placeholder="No file selected" />
-            <button type="button" className="select-btn">Select</button>
+            <button type="button" onClick={() => video1080InputRef.current.click()} className="select-btn">Select</button>
+            <input type="file" ref={video1080InputRef} hidden onChange={(e) => handleFileChange(e, 'videoFile1080')} />
            </div>
           </div>
          </div>

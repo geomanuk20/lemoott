@@ -32,6 +32,13 @@ const Episodes = () => {
     
     setEpisodes(Array.isArray(episodesData) ? episodesData : []);
     setShows(Array.isArray(showsData) ? showsData : []);
+
+    // Pre-filter by show if query param is present
+    const params = new URLSearchParams(window.location.search);
+    const showParam = params.get('show');
+    if (showParam) {
+     setSelectedShow(showParam);
+    }
    } catch (err) {
     console.error('Error fetching data:', err);
    } finally {
@@ -150,114 +157,134 @@ const Episodes = () => {
   }
  };
 
- return (
-  <div className="episodes-page">
-   {notification && (
-    <div className="custom-alert-box">
-     <div className="alert-content">
-      {notification.type === 'success' ? (
-       <CheckCircle2 size={42} color="#00c853" strokeWidth={2.5} />
-      ) : (
-       <XCircle size={42} color="#ff4d4d" strokeWidth={2.5} />
-      )}
-      <span className="alert-text">{notification.message}</span>
-     </div>
-    </div>
-   )}
-   <div className="page-header">
-    <div className="search-wrapper">
-     <div className="search-bar">
-      <input type="text" placeholder="Search By Title..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-      <Search size={20} className="search-icon" />
-     </div>
-    </div>
-    <button className="add-btn" onClick={() => navigate('/admin/tv-shows/episodes/add')}>
-     <Plus size={20} strokeWidth={3} />
-     <span>Add Episode</span>
-    </button>
-   </div>
+  const isShortPath = window.location.pathname.includes('/short-web-series');
 
-   <div className="filters-bar">
-    <div className="filter-group" style={{ display: 'flex', gap: '15px' }}>
-     <select 
-      className="custom-select-box" 
-      value={selectedShow} 
-      onChange={(e) => setSelectedShow(e.target.value)}
-     >
-      <option value="">Filter by Shows</option>
-      {shows.map(show => (
-       <option key={show._id} value={show._id}>{show.title}</option>
-      ))}
-     </select>
+  const filteredShows = shows.filter(show => {
+    if (isShortPath) {
+      return show.contentType === 'Short Web Series';
+    } else {
+      return show.contentType === 'TV Show' || !show.contentType;
+    }
+  });
+
+  return (
+   <div className="episodes-page">
+    {notification && (
+     <div className="custom-alert-box">
+      <div className="alert-content">
+       {notification.type === 'success' ? (
+        <CheckCircle2 size={42} color="#00c853" strokeWidth={2.5} />
+       ) : (
+        <XCircle size={42} color="#ff4d4d" strokeWidth={2.5} />
+       )}
+       <span className="alert-text">{notification.message}</span>
+      </div>
+     </div>
+    )}
+    <div className="page-header">
+     <div className="search-wrapper">
+      <div className="search-bar">
+       <input type="text" placeholder="Search By Title..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+       <Search size={20} className="search-icon" />
+      </div>
+     </div>
+     <button className="add-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/episodes/add' : '/admin/tv-shows/episodes/add')}>
+      <Plus size={20} strokeWidth={3} />
+      <span>Add Episode</span>
+     </button>
     </div>
-    <div className="right-controls">
-     <label className="select-all">
-      <input 
-       type="checkbox" 
-       checked={Array.isArray(episodes) && episodes.length > 0 && selectedEpisodes.length === episodes.length}
-       onChange={handleSelectAll}
-      />
-      <span>Select All</span>
-     </label>
-     <div className="action-dropdown-container">
-      <button className="action-btn" onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}>
-       <span>Action</span>
-       <ChevronDown size={16} />
-      </button>
-      {isActionMenuOpen && (
-       <div className="action-dropdown-menu">
-        <button onClick={() => handleBulkStatusChange('Active')}>Active</button>
-        <button onClick={() => handleBulkStatusChange('Inactive')}>Inactive</button>
-        <button className="delete-option" onClick={handleBulkDelete}>Delete</button>
-       </div>
-      )}
+
+    <div className="filters-bar">
+     <div className="filter-group" style={{ display: 'flex', gap: '15px' }}>
+      <select 
+       className="custom-select-box" 
+       value={selectedShow} 
+       onChange={(e) => setSelectedShow(e.target.value)}
+      >
+       <option value="">Filter by Shows</option>
+       {filteredShows.map(show => (
+        <option key={show._id} value={show._id}>{show.title}</option>
+       ))}
+      </select>
+     </div>
+     <div className="right-controls">
+      <label className="select-all">
+       <input 
+        type="checkbox" 
+        checked={Array.isArray(episodes) && episodes.length > 0 && selectedEpisodes.length === episodes.length}
+        onChange={handleSelectAll}
+       />
+       <span>Select All</span>
+      </label>
+      <div className="action-dropdown-container">
+       <button className="action-btn" onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}>
+        <span>Action</span>
+        <ChevronDown size={16} />
+       </button>
+       {isActionMenuOpen && (
+        <div className="action-dropdown-menu">
+         <button onClick={() => handleBulkStatusChange('Active')}>Active</button>
+         <button onClick={() => handleBulkStatusChange('Inactive')}>Inactive</button>
+         <button className="delete-option" onClick={handleBulkDelete}>Delete</button>
+        </div>
+       )}
+      </div>
      </div>
     </div>
-   </div>
 
-   {loading ? (
-    <div className="loader-container"><Loader size="small" inline={true} /></div>
-   ) : (
-    <div className="grid-container">
-     {(Array.isArray(episodes) ? episodes : [])
-      .filter(ep => !selectedShow || (ep.showId && (typeof ep.showId === 'string' ? ep.showId === selectedShow : ep.showId._id === selectedShow)))
-      .filter(ep => ep.title.toLowerCase().includes(searchTerm.toLowerCase()))
-      .map((episode) => (
-       <div key={episode._id} className="item-card">
-       <div className="poster-wrapper">
-        <input 
-         type="checkbox" 
-         className="item-checkbox" 
-         checked={selectedEpisodes.includes(episode._id)}
-         onChange={() => handleSelectEpisode(episode._id)}
-        />
-        <img src={formatImageUrl(episode, 'poster') || 'https://via.placeholder.com/300x450'} alt={episode.title} className="poster-img" />
-       </div>
-       <div className="item-info">
-        <h3 className="item-title">{episode.title}</h3>
-        <p className="item-subtitle">
-         {episode.showId?.title || 'Unknown Show'} - {episode.seasonId?.title || 'Unknown Season'}
-        </p>
-        <div className="card-controls">
-         <div className="action-icons">
-          <button className="circle-icon edit" onClick={() => navigate(`/admin/tv-shows/episodes/edit/${episode._id}`)}><Edit size={16} /></button>
-          <button className="circle-icon duplicate" onClick={() => duplicateEpisode(episode)} title="Duplicate"><Copy size={16} /></button>
-          <button className="circle-icon delete" onClick={() => confirmDelete(episode._id)}><X size={18} strokeWidth={3} /></button>
+    {loading ? (
+     <div className="loader-container"><Loader size="small" inline={true} /></div>
+    ) : (
+     <div className="grid-container">
+      {(Array.isArray(episodes) ? episodes : [])
+       .filter(ep => {
+        const showId = ep.showId && (typeof ep.showId === 'string' ? ep.showId : ep.showId._id);
+        const contentType = ep.showId?.contentType || shows.find(s => s._id === showId)?.contentType;
+        if (contentType) {
+         const isShortShow = contentType === 'Short Web Series';
+         if (isShortPath && !isShortShow) return false;
+         if (!isShortPath && isShortShow) return false;
+        }
+        return !selectedShow || showId === selectedShow;
+       })
+       .filter(ep => ep.title.toLowerCase().includes(searchTerm.toLowerCase()))
+       .map((episode) => (
+        <div key={episode._id} className="item-card">
+        <div className="poster-wrapper">
+         <input 
+          type="checkbox" 
+          className="item-checkbox" 
+          checked={selectedEpisodes.includes(episode._id)}
+          onChange={() => handleSelectEpisode(episode._id)}
+         />
+         <img src={formatImageUrl(episode, 'poster') || 'https://via.placeholder.com/300x450'} alt={episode.title} className="poster-img" />
+        </div>
+        <div className="item-info">
+         <h3 className="item-title">{episode.title}</h3>
+          <p className="item-subtitle">
+           {episode.showId?.title || 'Unknown Show'}
+           {episode.seasonId?.title && ` - ${episode.seasonId.title}`}
+          </p>
+         <div className="card-controls">
+          <div className="action-icons">
+           <button className="circle-icon edit" onClick={() => navigate(isShortPath ? `/admin/short-web-series/episodes/edit/${episode._id}` : `/admin/tv-shows/episodes/edit/${episode._id}`)}><Edit size={16} /></button>
+           <button className="circle-icon duplicate" onClick={() => duplicateEpisode(episode)} title="Duplicate"><Copy size={16} /></button>
+           <button className="circle-icon delete" onClick={() => confirmDelete(episode._id)}><X size={18} strokeWidth={3} /></button>
+          </div>
+          <label className="switch">
+           <input 
+            type="checkbox" 
+            checked={episode.status === 'Active'} 
+            onChange={() => toggleStatus(episode)}
+           />
+           <span className="slider"></span>
+          </label>
          </div>
-         <label className="switch">
-          <input 
-           type="checkbox" 
-           checked={episode.status === 'Active'} 
-           onChange={() => toggleStatus(episode)}
-          />
-          <span className="slider"></span>
-         </label>
         </div>
        </div>
-      </div>
-     ))}
-    </div>
-   )}
+      ))}
+     </div>
+    )}
 
    {/* Delete Modal */}
    {isDeleteModalOpen && (

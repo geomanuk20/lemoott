@@ -21,7 +21,8 @@ const sportsVideoSchema = new mongoose.Schema({
   subtitlesActive: { type: String, default: 'Inactive' },
   seoTitle: { type: String },
   metaDescription: { type: String },
-  keywords: { type: String }
+  keywords: { type: String },
+  views: { type: Number, default: 0 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('SportsVideo', sportsVideoSchema);
