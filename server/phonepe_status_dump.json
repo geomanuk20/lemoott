@@ -1,0 +1,42 @@
+{
+  "orderId": "OMO2605221107482901421600",
+  "state": "COMPLETED",
+  "amount": 100,
+  "currency": "INR",
+  "feeAmount": 0,
+  "payableAmount": 100,
+  "expireAt": 1779601080641,
+  "paymentDetails": [
+    {
+      "paymentMode": "CARD",
+      "transactionId": "OM2605221107482901421114",
+      "timestamp": 1779428280641,
+      "amount": 100,
+      "currency": "INR",
+      "feeAmount": 0,
+      "payableAmount": 100,
+      "state": "COMPLETED",
+      "splitInstruments": [
+        {
+          "amount": 100,
+          "currency": "INR",
+          "rail": {
+            "type": "PG",
+            "authorizationCode": "<authorizationCode>"
+          },
+          "instrument": {
+            "type": null,
+            "bankId": "SBIN",
+            "arn": "60222877216907501154409",
+            "brn": "328962910698",
+            "geoScope": "DOMESTIC",
+            "cardNetwork": "VISA",
+            "maskedCardNumber": "XXXXXXXXXXXX6314",
+            "tokenBin": "53675463",
+            "cardHolderName": "GUEST_NEW_CARD"
+          }
+        }
+      ]
+    }
+  ]
+}
