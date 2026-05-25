@@ -1,9 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-require('dotenv').config();
-const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
@@ -1402,12 +1401,7 @@ const connectDB = async () => {
     
     // Run seeds only after a stable connection
     await runAllSeeds();
-    
-    // Start server only after DB is ready
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log('MongoDB connection stable and ready.');
-    });
+    console.log('MongoDB connection stable and ready.');
   } catch (err) {
     console.error('CRITICAL: MongoDB connection failed:', err.message);
     // On critical failure, wait and retry instead of exiting immediately
@@ -1422,6 +1416,11 @@ mongoose.connection.on('error', err => {
 
 mongoose.connection.on('disconnected', () => {
   console.log('Mongoose disconnected. Awaiting automatic reconnection...');
+});
+
+// Start listening immediately to prevent Hostinger 500/504 deployment/health check timeout
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 connectDB();
