@@ -1402,12 +1402,7 @@ const connectDB = async () => {
     
     // Run seeds only after a stable connection
     await runAllSeeds();
-    
-    // Start server only after DB is ready
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log('MongoDB connection stable and ready.');
-    });
+    console.log('MongoDB connection stable and ready.');
   } catch (err) {
     console.error('CRITICAL: MongoDB connection failed:', err.message);
     // On critical failure, wait and retry instead of exiting immediately
@@ -1415,6 +1410,11 @@ const connectDB = async () => {
     setTimeout(connectDB, 5000);
   }
 };
+
+// Start Express server immediately so Hostinger's deployment proxy doesn't 504 timeout
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 mongoose.connection.on('error', err => {
   console.error('Mongoose live connection error:', err);
