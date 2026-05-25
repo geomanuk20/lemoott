@@ -33,6 +33,7 @@ server/test_decode.js
 
 # Temp/Debug files & Local scripts
 /*.js
+!/index.js
 server/make_admin.js
 server/phonepe_callback_dump.json
 server/phonepe_callback_error.txt
