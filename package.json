@@ -2,10 +2,7 @@
   "name": "video-ott-platform",
   "version": "1.0.0",
   "description": "Video OTT Admin Panel and Streaming Platform",
-  "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "build": "npm install --prefix client && npm run build --prefix client",
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "install-all": "npm install && npm install --prefix server && npm install --prefix client"
   },
@@ -16,7 +13,7 @@
     "cloudinary": "^1.41.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1",
+    "express": "^4.21.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.1",
     "multer": "^2.1.1",
